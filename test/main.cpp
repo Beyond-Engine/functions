@@ -51,7 +51,7 @@ TEST_CASE("unique_function with a captured lambda")
 TEST_CASE("unique_function can move")
 {
   const int x = 1;
-  beyond::unique_function<int()> f{[x]() { return x; }};
+  beyond::unique_function<int()> f{[&]() { return x; }};
   auto f2 = std::move(f);
   CHECK(!f);
   REQUIRE(f2);

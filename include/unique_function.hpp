@@ -51,7 +51,7 @@ union unique_function_storage {
         if constexpr (fit_sm) {
           static_cast<Func*>(data)->~Func();
         } else {
-          delete who.storage_.large_;
+          delete static_cast<Func*>(who.storage_.large_);
         }
         break;
       case details::unique_function_behaviors::move_to: {
@@ -70,7 +70,7 @@ union unique_function_storage {
         auto trampoline = [](void* func, Args&&... args) -> R {
           return (*static_cast<Func*>(func))(std::forward<Args>(args)...);
         };
-        *(PlainFunction**)ret = trampoline;
+        *static_cast<PlainFunction**>(ret) = trampoline;
         break;
       }
     }
@@ -130,7 +130,7 @@ public:
   /// @brief invokes the target
   /// @throw std::bad_function_call if `*this` does not store a callable
   /// function target, i.e. `*this == false`
-  auto operator()(Args... args) const -> R
+  auto operator()(Args... args) -> R
   {
     if (*this) {
       const auto trampoline = this->trampoline();
@@ -156,25 +156,23 @@ private:
     behaviors_ = nullptr;
   }
 
-  auto trampoline() const
+  auto trampoline()
   {
     using PlainFunction = R(void*, Args&&...);
     PlainFunction* result = nullptr;
 
     assert(behaviors_);
-    behaviors_(details::unique_function_behaviors::trampoline,
-               const_cast<unique_function&>(*this), &result);
+    behaviors_(details::unique_function_behaviors::trampoline, *this, &result);
     return result;
   }
 
-  auto data() const noexcept -> void*
+  auto data() noexcept -> void*
   {
     void* result = nullptr;
 
     assert(behaviors_);
 
-    behaviors_(details::unique_function_behaviors::data,
-               const_cast<unique_function&>(*this), &result);
+    behaviors_(details::unique_function_behaviors::data, *this, &result);
     return result;
   }
 };
