@@ -93,7 +93,7 @@ struct Large {
   char x[128];
 };
 
-TEST_CASE("unique_function clean-up")
+TEST_CASE("unique_function constructor forwarding and clean-up")
 {
   int x = 1;
   {
@@ -107,4 +107,26 @@ TEST_CASE("unique_function clean-up")
     f();
   }
   REQUIRE(x == 5);
+}
+
+int func(double)
+{
+  return 0;
+}
+
+TEST_CASE("CTAD")
+{
+  SECTION("Function")
+  {
+    beyond::unique_function f{func};
+    STATIC_REQUIRE(
+        std::is_same_v<decltype(f), beyond::unique_function<int(double)>>);
+  }
+
+  SECTION("Function pointers")
+  {
+    beyond::unique_function f{&func};
+    STATIC_REQUIRE(
+        std::is_same_v<decltype(f), beyond::unique_function<int(double)>>);
+  }
 }

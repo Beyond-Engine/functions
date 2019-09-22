@@ -95,9 +95,9 @@ public:
   {
     static_assert(std::is_invocable_r_v<R, DFunc, Args...>);
 
-    storage_.emplace<Func>(std::forward<Func>(func));
+    storage_.emplace<DFunc>(std::forward<DFunc>(func));
     behaviors_ = detail::unique_function_storage::behaviors<
-        R, Args...>::template dispatch<Func>;
+        R, Args...>::template dispatch<DFunc>;
   }
 
   unique_function(const unique_function&) = delete;
@@ -177,6 +177,10 @@ private:
     return result;
   }
 };
+
+// deduction guides
+template <class R, typename... Args>
+unique_function(R (*)(Args...))->unique_function<R(Args...)>;
 
 } // namespace beyond
 
