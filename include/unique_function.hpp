@@ -182,6 +182,57 @@ private:
 template <class R, typename... Args>
 unique_function(R (*)(Args...))->unique_function<R(Args...)>;
 
+namespace detail {
+
+// TODO: Support member functions that take this by reference
+template <typename T> struct member_function_pointer_trait {
+};
+
+#define BEYOND_MEMBER_FUNCTION_POINTER_TRAIT(CV_OPT, NOEXCEPT_OPT)             \
+  template <typename R, typename U, typename... Args>                          \
+  struct member_function_pointer_trait<R (U::*)(Args...)                       \
+                                           CV_OPT NOEXCEPT_OPT> {              \
+    using return_type = R;                                                     \
+    using guide_type = R(Args...);                                             \
+  };
+
+#define BEYOND_NOARG
+BEYOND_MEMBER_FUNCTION_POINTER_TRAIT(BEYOND_NOARG, BEYOND_NOARG)
+BEYOND_MEMBER_FUNCTION_POINTER_TRAIT(const, BEYOND_NOARG)
+BEYOND_MEMBER_FUNCTION_POINTER_TRAIT(const volatile, BEYOND_NOARG)
+BEYOND_MEMBER_FUNCTION_POINTER_TRAIT(volatile, BEYOND_NOARG)
+
+BEYOND_MEMBER_FUNCTION_POINTER_TRAIT(BEYOND_NOARG, noexcept)
+BEYOND_MEMBER_FUNCTION_POINTER_TRAIT(const, noexcept)
+BEYOND_MEMBER_FUNCTION_POINTER_TRAIT(const volatile, noexcept)
+BEYOND_MEMBER_FUNCTION_POINTER_TRAIT(volatile, noexcept)
+
+#undef BEYOND_NOARG
+#undef BEYOND_MEMBER_FUNCTION_POINTER_TRAIT
+
+// Main template: cannot find &Func::operator()
+template <typename Func, typename = void>
+struct function_deduce_signature_impl {
+};
+
+template <typename Func>
+struct function_deduce_signature_impl<
+    Func, std::void_t<decltype(&Func::operator())>> {
+  using type = member_function_pointer_trait<decltype(&Func::operator())>;
+};
+
+template <typename Func>
+struct function_deduce_signature
+    : function_deduce_signature_impl<std::remove_cv_t<Func>> {
+};
+
+} // namespace detail
+
+template <class Func, class = std::enable_if_t<!std::is_pointer_v<Func>>>
+unique_function(Func)
+    ->unique_function<
+        typename detail::function_deduce_signature<Func>::type::guide_type>;
+
 } // namespace beyond
 
 #endif // BEYOND_UNIQUE_FUNCTION_HPP

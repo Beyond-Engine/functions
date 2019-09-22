@@ -129,4 +129,20 @@ TEST_CASE("CTAD")
     STATIC_REQUIRE(
         std::is_same_v<decltype(f), beyond::unique_function<int(double)>>);
   }
+
+  SECTION("Const Function objects")
+  {
+    int i = 5;
+    beyond::unique_function f{[&](double) { return i; }};
+    STATIC_REQUIRE(
+        std::is_same_v<decltype(f), beyond::unique_function<int(double)>>);
+  }
+
+  SECTION("Mutable Function objects")
+  {
+    int i = 42;
+    beyond::unique_function f{[&](double) mutable { return ++i; }};
+    STATIC_REQUIRE(
+        std::is_same_v<decltype(f), beyond::unique_function<int(double)>>);
+  }
 }
