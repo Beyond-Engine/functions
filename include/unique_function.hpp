@@ -13,7 +13,7 @@ namespace beyond {
 
 template <typename R, typename... Args> class unique_function;
 
-namespace details {
+namespace detail {
 
 enum class unique_function_behaviors { move_to, trampoline, data, destory };
 
@@ -47,14 +47,14 @@ union unique_function_storage {
       void* data = fit_sm ? &who.storage_.small_ : who.storage_.large_;
 
       switch (behavior) {
-      case details::unique_function_behaviors::destory:
+      case detail::unique_function_behaviors::destory:
         if constexpr (fit_sm) {
           static_cast<Func*>(data)->~Func();
         } else {
           delete static_cast<Func*>(who.storage_.large_);
         }
         break;
-      case details::unique_function_behaviors::move_to: {
+      case detail::unique_function_behaviors::move_to: {
         auto* func = static_cast<unique_function<R(Args...)>*>(ret);
         func->reset();
         func->storage_.template emplace<Func>(
@@ -62,10 +62,10 @@ union unique_function_storage {
         func->behaviors_ = behaviors<R, Args...>::template dispatch<Func>;
         who.reset();
       } break;
-      case details::unique_function_behaviors::data:
+      case detail::unique_function_behaviors::data:
         *static_cast<void**>(ret) = data;
         break;
-      case details::unique_function_behaviors::trampoline:
+      case detail::unique_function_behaviors::trampoline:
         using PlainFunction = R(void*, Args&&...);
         auto trampoline = [](void* func, Args&&... args) -> R {
           return (*static_cast<Func*>(func))(std::forward<Args>(args)...);
@@ -77,10 +77,12 @@ union unique_function_storage {
   };
 };
 
-} // namespace details
+} // namespace detail
 
 template <typename R, typename... Args> class unique_function<R(Args...)> {
 public:
+  using result_type = R;
+
   /// @brief Default constructor
   unique_function() = default;
 
@@ -93,7 +95,7 @@ public:
     static_assert(std::is_invocable_r_v<R, DFunc, Args...>);
 
     storage_.emplace<Func>(std::forward<Func>(func));
-    behaviors_ = details::unique_function_storage::behaviors<
+    behaviors_ = detail::unique_function_storage::behaviors<
         R, Args...>::template dispatch<Func>;
   }
 
@@ -104,8 +106,7 @@ public:
   unique_function(unique_function&& other) noexcept
   {
     if (other) {
-      other.behaviors_(details::unique_function_behaviors::move_to, other,
-                       this);
+      other.behaviors_(detail::unique_function_behaviors::move_to, other, this);
     }
   }
 
@@ -113,8 +114,7 @@ public:
   unique_function& operator=(unique_function&& other) noexcept
   {
     if (other) {
-      other.behaviors_(details::unique_function_behaviors::move_to, other,
-                       this);
+      other.behaviors_(detail::unique_function_behaviors::move_to, other, this);
     } else {
       reset();
     }
@@ -142,16 +142,16 @@ public:
   }
 
 private:
-  friend union details::unique_function_storage;
+  friend union detail::unique_function_storage;
 
-  void (*behaviors_)(details::unique_function_behaviors, unique_function&,
+  void (*behaviors_)(detail::unique_function_behaviors, unique_function&,
                      void*) = nullptr;
-  details::unique_function_storage storage_;
+  detail::unique_function_storage storage_;
 
   auto reset()
   {
     if (behaviors_) {
-      behaviors_(details::unique_function_behaviors::destory, *this, nullptr);
+      behaviors_(detail::unique_function_behaviors::destory, *this, nullptr);
     }
     behaviors_ = nullptr;
   }
@@ -162,7 +162,7 @@ private:
     PlainFunction* result = nullptr;
 
     assert(behaviors_);
-    behaviors_(details::unique_function_behaviors::trampoline, *this, &result);
+    behaviors_(detail::unique_function_behaviors::trampoline, *this, &result);
     return result;
   }
 
@@ -172,7 +172,7 @@ private:
 
     assert(behaviors_);
 
-    behaviors_(details::unique_function_behaviors::data, *this, &result);
+    behaviors_(detail::unique_function_behaviors::data, *this, &result);
     return result;
   }
 };

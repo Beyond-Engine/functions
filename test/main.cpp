@@ -45,9 +45,6 @@ TEST_CASE("unique_function with a captured lambda")
   REQUIRE(f2() == 2);
 }
 
-// Functions
-// Function pointers
-
 TEST_CASE("unique_function can move")
 {
   const int x = 1;
