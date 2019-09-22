@@ -28,7 +28,8 @@ union unique_function_storage {
 
   constexpr unique_function_storage() noexcept = default;
 
-  template <typename Func, typename... Data> void emplace(Data&&... args)
+  template <typename Func, typename... Data>
+  auto emplace(Data&&... args) -> void
   {
     if constexpr (fit_small<Func>) {
       ::new (reinterpret_cast<void*>(&small_))
@@ -40,8 +41,8 @@ union unique_function_storage {
 
   template <typename R, typename... Args> struct behaviors {
     template <typename Func>
-    static void dispatch(unique_function_behaviors behavior,
-                         unique_function<R(Args...)>& who, void* ret)
+    static auto dispatch(unique_function_behaviors behavior,
+                         unique_function<R(Args...)>& who, void* ret) -> void
     {
       constexpr static bool fit_sm = fit_small<Func>;
       void* data = fit_sm ? &who.storage_.small_ : who.storage_.large_;
@@ -100,7 +101,7 @@ public:
   }
 
   unique_function(const unique_function&) = delete;
-  unique_function& operator=(const unique_function&) = delete;
+  auto operator=(const unique_function&) -> unique_function& = delete;
 
   /// @brief Move constructor
   unique_function(unique_function&& other) noexcept
@@ -111,7 +112,7 @@ public:
   }
 
   /// @brief Move assignment
-  unique_function& operator=(unique_function&& other) noexcept
+  auto operator=(unique_function&& other) noexcept -> unique_function&
   {
     if (other) {
       other.behaviors_(detail::unique_function_behaviors::move_to, other, this);

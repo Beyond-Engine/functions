@@ -45,6 +45,13 @@ TEST_CASE("unique_function with a captured lambda")
   REQUIRE(f2() == 2);
 }
 
+TEST_CASE("unique_function with arguments")
+{
+  beyond::unique_function<int(int, int)> f{[](int x, int y) { return x + y; }};
+  REQUIRE(f);
+  REQUIRE(f(1, 2) == 3);
+}
+
 TEST_CASE("unique_function can move")
 {
   const int x = 1;
