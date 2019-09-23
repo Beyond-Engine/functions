@@ -182,3 +182,9 @@ TEST_CASE("CTAD")
         std::is_same_v<decltype(f), beyond::unique_function<int(double)>>);
   }
 }
+
+TEST_CASE("const unique_function")
+{
+  beyond::unique_function<int() const> f{[]() { return 42; }};
+  REQUIRE(f() == 42);
+}
