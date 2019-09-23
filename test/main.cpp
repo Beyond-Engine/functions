@@ -114,6 +114,27 @@ int func(double)
   return 0;
 }
 
+TEST_CASE("Swap")
+{
+  int x = 1;
+  beyond::unique_function<int()> f{[x]() { return x; }};
+  beyond::unique_function<int()> f2{[]() { return 2; }};
+
+  SECTION("Member function")
+  {
+    f.swap(f2);
+    REQUIRE(f() == 2);
+    REQUIRE(f2() == 1);
+  }
+
+  SECTION("Free function")
+  {
+    swap(f, f2);
+    REQUIRE(f() == 2);
+    REQUIRE(f2() == 1);
+  }
+}
+
 TEST_CASE("CTAD")
 {
   SECTION("Function")

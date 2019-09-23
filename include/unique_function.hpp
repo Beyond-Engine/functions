@@ -142,6 +142,14 @@ public:
     }
   }
 
+  /// @brief Swap another unique_function with `this`
+  auto swap(unique_function& other) noexcept -> void
+  {
+    unique_function temp = std::move(other);
+    other = std::move(*this);
+    *this = std::move(temp);
+  }
+
 private:
   friend union detail::unique_function_storage;
 
@@ -177,6 +185,15 @@ private:
     return result;
   }
 };
+
+/// @brief Exchanges the state of lhs with that of rhs. Effectively calls
+/// `lhs.swap(rhs)`.
+template <class R, class... Args>
+void swap(unique_function<R(Args...)>& lhs,
+          unique_function<R(Args...)>& rhs) noexcept
+{
+  lhs.swap(rhs);
+}
 
 // deduction guides
 template <class R, typename... Args>
