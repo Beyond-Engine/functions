@@ -135,6 +135,21 @@ TEST_CASE("Swap")
   }
 }
 
+TEST_CASE("nullptr comparison")
+{
+  beyond::unique_function<int()> f1;
+  beyond::unique_function<int()> f2{[]() { return 42; }};
+  REQUIRE(f1 == nullptr);
+  REQUIRE(!(f1 != nullptr));
+  REQUIRE(nullptr == f1);
+  REQUIRE(!(nullptr != f1));
+
+  REQUIRE(f2 != nullptr);
+  REQUIRE(!(f2 == nullptr));
+  REQUIRE(nullptr != f2);
+  REQUIRE(!(nullptr == f2));
+}
+
 TEST_CASE("CTAD")
 {
   SECTION("Function")

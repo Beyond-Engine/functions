@@ -188,11 +188,40 @@ private:
 
 /// @brief Exchanges the state of lhs with that of rhs. Effectively calls
 /// `lhs.swap(rhs)`.
+/// @related unique_function::swap
 template <class R, class... Args>
-void swap(unique_function<R(Args...)>& lhs,
-          unique_function<R(Args...)>& rhs) noexcept
+auto swap(unique_function<R(Args...)>& lhs,
+          unique_function<R(Args...)>& rhs) noexcept -> void
 {
   lhs.swap(rhs);
+}
+
+template <class R, class... Args>
+auto operator==(const unique_function<R(Args...)>& lhs, std::nullptr_t) noexcept
+    -> bool
+{
+  return !lhs;
+}
+
+template <class R, class... Args>
+auto operator==(std::nullptr_t, const unique_function<R(Args...)>& lhs) noexcept
+    -> bool
+{
+  return !lhs;
+}
+
+template <class R, class... Args>
+auto operator!=(const unique_function<R(Args...)>& lhs, std::nullptr_t) noexcept
+    -> bool
+{
+  return lhs;
+}
+
+template <class R, class... Args>
+auto operator!=(std::nullptr_t, const unique_function<R(Args...)>& lhs) noexcept
+    -> bool
+{
+  return lhs;
 }
 
 // deduction guides
