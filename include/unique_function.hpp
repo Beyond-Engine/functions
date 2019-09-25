@@ -98,8 +98,9 @@ union unique_function_storage {
                                                                                \
       storage_.emplace<DFunc>(std::forward<DFunc>(func));                      \
       behaviors_ = reinterpret_cast<decltype(behaviors_)>(                     \
+                     reinterpret_cast<void*>(                                  \
           detail::unique_function_storage::behaviors<                          \
-              R, Args...>::template dispatch<DFunc>);                          \
+              R, Args...>::template dispatch<DFunc>));                         \
     }                                                                          \
                                                                                \
     unique_function(const unique_function&) = delete;                          \
