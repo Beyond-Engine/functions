@@ -80,160 +80,245 @@ union unique_function_storage {
 
 } // namespace detail
 
-#define BEYOND_UNIQUE_FUNCTION_DEF(QUAL_OPT)                                   \
-  template <typename R, typename... Args>                                      \
-  class unique_function<R(Args...) QUAL_OPT> {                                 \
-  public:                                                                      \
-    using result_type = R;                                                     \
-                                                                               \
-    unique_function() = default;                                               \
-                                                                               \
-    template <                                                                 \
-        typename Func, class DFunc = std::decay_t<Func>,                       \
-        class = std::enable_if_t<!std::is_same_v<DFunc, unique_function> &&    \
-                                 std::is_move_constructible_v<DFunc>>>         \
-    explicit unique_function(Func&& func)                                      \
-    {                                                                          \
-      static_assert(std::is_invocable_r_v<R, DFunc, Args...>);                 \
-                                                                               \
-      storage_.emplace<DFunc>(std::forward<DFunc>(func));                      \
-      behaviors_ = reinterpret_cast<decltype(behaviors_)>(                     \
-                     reinterpret_cast<void*>(                                  \
-          detail::unique_function_storage::behaviors<                          \
-              R, Args...>::template dispatch<DFunc>));                         \
-    }                                                                          \
-                                                                               \
-    unique_function(const unique_function&) = delete;                          \
-    auto operator=(const unique_function&) -> unique_function& = delete;       \
-                                                                               \
-    unique_function(unique_function&& other) noexcept                          \
-    {                                                                          \
-      if (other) {                                                             \
-        other.behaviors_(detail::unique_function_behaviors::move_to, other,    \
-                         this);                                                \
-      }                                                                        \
-    }                                                                          \
-                                                                               \
-    auto operator=(unique_function&& other) noexcept -> unique_function&       \
-    {                                                                          \
-      if (other) {                                                             \
-        other.behaviors_(detail::unique_function_behaviors::move_to, other,    \
-                         this);                                                \
-      } else {                                                                 \
-        reset();                                                               \
-      }                                                                        \
-      return *this;                                                            \
-    }                                                                          \
-                                                                               \
-    [[nodiscard]] operator bool() const noexcept                               \
-    {                                                                          \
-      return behaviors_ != nullptr;                                            \
-    }                                                                          \
-                                                                               \
-    auto operator()(Args... args) QUAL_OPT -> R                                \
-    {                                                                          \
-      if (*this) {                                                             \
-        const auto trampoline = this->trampoline();                            \
-        void* func = this->data();                                             \
-        return trampoline(func, std::forward<Args>(args)...);                  \
-      } else {                                                                 \
-        throw std::bad_function_call{};                                        \
-      }                                                                        \
-    }                                                                          \
-                                                                               \
-    auto swap(unique_function& other) noexcept -> void                         \
-    {                                                                          \
-      unique_function temp = std::move(other);                                 \
-      other = std::move(*this);                                                \
-      *this = std::move(temp);                                                 \
-    }                                                                          \
-                                                                               \
-  private:                                                                     \
-    friend union detail::unique_function_storage;                              \
-                                                                               \
-    void (*behaviors_)(detail::unique_function_behaviors, unique_function&,    \
-                       void*) = nullptr;                                       \
-    detail::unique_function_storage storage_;                                  \
-                                                                               \
-    auto reset()                                                               \
-    {                                                                          \
-      if (behaviors_) {                                                        \
-        behaviors_(detail::unique_function_behaviors::destory, *this,          \
-                   nullptr);                                                   \
-      }                                                                        \
-      behaviors_ = nullptr;                                                    \
-    }                                                                          \
-                                                                               \
-    auto trampoline() QUAL_OPT                                                 \
-    {                                                                          \
-      using PlainFunction = R(void*, Args&&...);                               \
-      PlainFunction* result = nullptr;                                         \
-                                                                               \
-      assert(behaviors_);                                                      \
-      behaviors_(detail::unique_function_behaviors::trampoline,                \
-                 const_cast<unique_function&>(*this), &result);                \
-      return result;                                                           \
-    }                                                                          \
-                                                                               \
-    auto data() QUAL_OPT noexcept -> void*                                     \
-    {                                                                          \
-      void* result = nullptr;                                                  \
-                                                                               \
-      assert(behaviors_);                                                      \
-                                                                               \
-      behaviors_(detail::unique_function_behaviors::data,                      \
-                 const_cast<unique_function&>(*this), &result);                \
-      return result;                                                           \
-    }                                                                          \
-  };                                                                           \
-                                                                               \
-  template <class R, class... Args>                                            \
-  auto swap(unique_function<R(Args...) QUAL_OPT>& lhs,                         \
-            unique_function<R(Args...) QUAL_OPT>& rhs) noexcept->void          \
-  {                                                                            \
-    lhs.swap(rhs);                                                             \
-  }                                                                            \
-                                                                               \
-  template <class R, class... Args>                                            \
-  auto operator==(const unique_function<R(Args...) QUAL_OPT>& lhs,             \
-                  std::nullptr_t) noexcept->bool                               \
-  {                                                                            \
-    return !lhs;                                                               \
-  }                                                                            \
-                                                                               \
-  template <class R, class... Args>                                            \
-  auto operator==(                                                             \
-      std::nullptr_t,                                                          \
-      const unique_function<R(Args...) QUAL_OPT>& lhs) noexcept->bool          \
-  {                                                                            \
-    return !lhs;                                                               \
-  }                                                                            \
-                                                                               \
-  template <class R, class... Args>                                            \
-  auto operator!=(const unique_function<R(Args...) QUAL_OPT>& lhs,             \
-                  std::nullptr_t) noexcept->bool                               \
-  {                                                                            \
-    return lhs;                                                                \
-  }                                                                            \
-                                                                               \
-  template <class R, class... Args>                                            \
-  auto operator!=(                                                             \
-      std::nullptr_t,                                                          \
-      const unique_function<R(Args...) QUAL_OPT>& lhs) noexcept->bool          \
-  {                                                                            \
-    return lhs;                                                                \
+template <typename R, typename... Args> class unique_function<R(Args...)> {
+public:
+  using result_type = R;
+
+  unique_function() = default;
+
+  template <typename Func, class DFunc = std::decay_t<Func>,
+            class = std::enable_if_t<!std::is_same_v<DFunc, unique_function> &&
+                                     std::is_move_constructible_v<DFunc>>>
+  explicit unique_function(Func&& func)
+  {
+    static_assert(std::is_invocable_r_v<R, DFunc, Args...>);
+
+    storage_.emplace<DFunc>(std::forward<DFunc>(func));
+    behaviors_ = reinterpret_cast<decltype(behaviors_)>(
+        reinterpret_cast<void*>(detail::unique_function_storage::behaviors<
+                                R, Args...>::template dispatch<DFunc>));
   }
 
-#define BEYOND_NOARG
-BEYOND_UNIQUE_FUNCTION_DEF(BEYOND_NOARG)
-BEYOND_UNIQUE_FUNCTION_DEF(const)
+  unique_function(const unique_function&) = delete;
+  auto operator=(const unique_function&) -> unique_function& = delete;
 
-#undef BEYOND_NOARG
-#undef BEYOND_UNIQUE_FUNCTION_DEF
+  unique_function(unique_function&& other) noexcept
+  {
+    if (other) {
+      other.behaviors_(detail::unique_function_behaviors::move_to, other, this);
+    }
+  }
+
+  auto operator=(unique_function&& other) noexcept -> unique_function&
+  {
+    if (other) {
+      other.behaviors_(detail::unique_function_behaviors::move_to, other, this);
+    } else {
+      reset();
+    }
+    return *this;
+  }
+
+  [[nodiscard]] operator bool() const noexcept
+  {
+    return behaviors_ != nullptr;
+  }
+
+  auto operator()(Args... args) -> R
+  {
+    if (*this) {
+      const auto trampoline = this->trampoline();
+      void* func = this->data();
+      return trampoline(func, std::forward<Args>(args)...);
+    } else {
+      throw std::bad_function_call{};
+    }
+  }
+
+  auto swap(unique_function& other) noexcept -> void
+  {
+    unique_function temp = std::move(other);
+    other = std::move(*this);
+    *this = std::move(temp);
+  }
+
+private:
+  friend union detail::unique_function_storage;
+
+  void (*behaviors_)(detail::unique_function_behaviors, unique_function&,
+                     void*) = nullptr;
+  detail::unique_function_storage storage_;
+
+  auto reset()
+  {
+    if (behaviors_) {
+      behaviors_(detail::unique_function_behaviors::destory, *this, nullptr);
+    }
+    behaviors_ = nullptr;
+  }
+
+  auto trampoline()
+  {
+    using PlainFunction = R(void*, Args&&...);
+    PlainFunction* result = nullptr;
+
+    assert(behaviors_);
+    behaviors_(detail::unique_function_behaviors::trampoline,
+               const_cast<unique_function&>(*this), &result);
+    return result;
+  }
+
+  auto data() noexcept -> void*
+  {
+    void* result = nullptr;
+
+    assert(behaviors_);
+
+    behaviors_(detail::unique_function_behaviors::data,
+               const_cast<unique_function&>(*this), &result);
+    return result;
+  }
+};
+
+template <typename R, typename... Args>
+class unique_function<R(Args...) const> {
+public:
+  using result_type = R;
+
+  unique_function() = default;
+
+  template <typename Func, class DFunc = std::decay_t<Func>,
+            class = std::enable_if_t<!std::is_same_v<DFunc, unique_function> &&
+                                     std::is_move_constructible_v<DFunc>>>
+  explicit unique_function(Func&& func)
+  {
+    static_assert(std::is_invocable_r_v<R, DFunc, Args...>);
+
+    storage_.emplace<DFunc>(std::forward<DFunc>(func));
+    behaviors_ = reinterpret_cast<decltype(behaviors_)>(
+        reinterpret_cast<void*>(detail::unique_function_storage::behaviors<
+                                R, Args...>::template dispatch<DFunc>));
+  }
+
+  unique_function(const unique_function&) = delete;
+  auto operator=(const unique_function&) -> unique_function& = delete;
+
+  unique_function(unique_function&& other) noexcept
+  {
+    if (other) {
+      other.behaviors_(detail::unique_function_behaviors::move_to, other, this);
+    }
+  }
+
+  auto operator=(unique_function&& other) noexcept -> unique_function&
+  {
+    if (other) {
+      other.behaviors_(detail::unique_function_behaviors::move_to, other, this);
+    } else {
+      reset();
+    }
+    return *this;
+  }
+
+  [[nodiscard]] operator bool() const noexcept
+  {
+    return behaviors_ != nullptr;
+  }
+
+  auto operator()(Args... args) const -> R
+  {
+    if (*this) {
+      const auto trampoline = this->trampoline();
+      void* func = this->data();
+      return trampoline(func, std::forward<Args>(args)...);
+    } else {
+      throw std::bad_function_call{};
+    }
+  }
+
+  auto swap(unique_function& other) noexcept -> void
+  {
+    unique_function temp = std::move(other);
+    other = std::move(*this);
+    *this = std::move(temp);
+  }
+
+private:
+  friend union detail::unique_function_storage;
+
+  void (*behaviors_)(detail::unique_function_behaviors, unique_function&,
+                     void*) = nullptr;
+  detail::unique_function_storage storage_;
+
+  auto reset()
+  {
+    if (behaviors_) {
+      behaviors_(detail::unique_function_behaviors::destory, *this, nullptr);
+    }
+    behaviors_ = nullptr;
+  }
+
+  auto trampoline() const
+  {
+    using PlainFunction = R(void*, Args&&...);
+    PlainFunction* result = nullptr;
+
+    assert(behaviors_);
+    behaviors_(detail::unique_function_behaviors::trampoline,
+               const_cast<unique_function&>(*this), &result);
+    return result;
+  }
+
+  auto data() const noexcept -> void*
+  {
+    void* result = nullptr;
+
+    assert(behaviors_);
+
+    behaviors_(detail::unique_function_behaviors::data,
+               const_cast<unique_function&>(*this), &result);
+    return result;
+  }
+};
+
+template <class Func>
+auto swap(unique_function<Func>& lhs, unique_function<Func>& rhs) noexcept
+    -> void
+{
+  lhs.swap(rhs);
+}
+
+template <class Func>
+auto operator==(const unique_function<Func>& lhs, std::nullptr_t) noexcept
+    -> bool
+{
+  return !lhs;
+}
+
+template <class Func>
+auto operator==(std::nullptr_t, const unique_function<Func>& lhs) noexcept
+    -> bool
+{
+  return !lhs;
+}
+
+template <class Func>
+auto operator!=(const unique_function<Func>& lhs, std::nullptr_t) noexcept
+    -> bool
+{
+  return lhs;
+}
+
+template <class Func>
+auto operator!=(std::nullptr_t, const unique_function<Func>& lhs) noexcept
+    -> bool
+{
+  return lhs;
+}
 
 // deduction guides
 template <class R, typename... Args>
-unique_function(R (*)(Args...))->unique_function<R(Args...)>;
+unique_function(R (*)(Args...))->unique_function<R(Args...) const>;
 
 namespace detail {
 

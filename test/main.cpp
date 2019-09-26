@@ -155,15 +155,15 @@ TEST_CASE("CTAD")
   SECTION("Function")
   {
     beyond::unique_function f{func};
-    STATIC_REQUIRE(
-        std::is_same_v<decltype(f), beyond::unique_function<int(double)>>);
+    STATIC_REQUIRE(std::is_same_v<decltype(f),
+                                  beyond::unique_function<int(double) const>>);
   }
 
   SECTION("Function pointers")
   {
     beyond::unique_function f{&func};
-    STATIC_REQUIRE(
-        std::is_same_v<decltype(f), beyond::unique_function<int(double)>>);
+    STATIC_REQUIRE(std::is_same_v<decltype(f),
+                                  beyond::unique_function<int(double) const>>);
   }
 
   SECTION("Const Function objects")
