@@ -87,7 +87,7 @@ matrix:
         fi
 
 script:
-  - sudo pip install conan
+  - sudo pip3 install conan
   - mkdir build && cd build
   - cmake .. $CMAKE_OPTIONS
   - make

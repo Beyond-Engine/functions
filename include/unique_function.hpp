@@ -94,9 +94,8 @@ public:
     static_assert(std::is_invocable_r_v<R, DFunc, Args...>);
 
     storage_.emplace<DFunc>(std::forward<DFunc>(func));
-    behaviors_ = reinterpret_cast<decltype(behaviors_)>(
-        reinterpret_cast<void*>(detail::unique_function_storage::behaviors<
-                                R, Args...>::template dispatch<DFunc>));
+    behaviors_ = detail::unique_function_storage::behaviors<
+        R, Args...>::template dispatch<DFunc>;
   }
 
   unique_function(const unique_function&) = delete;
@@ -262,7 +261,6 @@ private:
   {
     using PlainFunction = R(void*, Args&&...);
     PlainFunction* result = nullptr;
-
     assert(behaviors_);
     behaviors_(detail::unique_function_behaviors::trampoline,
                const_cast<unique_function&>(*this), &result);
@@ -274,7 +272,6 @@ private:
     void* result = nullptr;
 
     assert(behaviors_);
-
     behaviors_(detail::unique_function_behaviors::data,
                const_cast<unique_function&>(*this), &result);
     return result;

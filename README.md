@@ -25,21 +25,14 @@ f(); // returns 2
 
 ```cpp
 beyond::unique_function<int()> f1 {[x=0]() mutable { return ++x; }};
-beyond::unique_function<int()> f2 {[x=0]() { return x; }};
-beyond::unique_function<int() const> f3 {[x=0]() mutable { return ++x; }};  // Cannot compile
-beyond::unique_function<int() const> f4 {[x=0]() { return x; }};
-const beyond::unique_function<int()> f5 {[x=0]() mutable { return ++x; }};
-const beyond::unique_function<int()> f6 {[x=0]() { return x; }};
-const beyond::unique_function<int() const> f7 {[x=0]() mutable { return ++x; }}; // Cannot compile
-const beyond::unique_function<int() const> f8 {[x=0]() { return x; }};
+beyond::unique_function<int() const> f2 {[x=0]() mutable { return ++x; }};  // TODO: Should not compile, no problem currently
+beyond::unique_function<int() const> f3 {[x=0]() { return x; }};
+const beyond::unique_function<int()> f4 {[x=0]() mutable { return ++x; }};
+const beyond::unique_function<int() const> f5 {[x=0]() { return x; }};
 f1(); // OK
-f2(); // OK
-// f3();
-f4(); // OK
-f5(); // Cannot compile
-f6(); // Cannot compile
-// f7();
-f8(); // OK
+f3(); // OK
+f4(); // Will not compile
+f5(); // OK
 ```
 
 ### Removal of `target` and `target_type`
