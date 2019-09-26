@@ -15,12 +15,13 @@ template <typename R, typename... Args> class unique_function;
 
 namespace detail {
 
-enum class unique_function_behaviors { move_to, trampoline, data, destory };
+enum class unique_function_behaviors { move_to, trampoline, destory };
 
 template <typename Func> void reset(unique_function<Func>& func)
 {
   if (func.behaviors_) {
-    func.behaviors_(detail::unique_function_behaviors::destory, func, nullptr);
+    func.behaviors_(detail::unique_function_behaviors::destory, func, nullptr,
+                    nullptr);
   }
   func.behaviors_ = nullptr;
 }
@@ -50,7 +51,8 @@ union unique_function_storage {
   template <typename R, typename... Args> struct behaviors {
     template <typename Func>
     static auto dispatch(unique_function_behaviors behavior,
-                         unique_function<R(Args...)>& who, void* ret) -> void
+                         unique_function<R(Args...)>& who, void* ret,
+                         void* ret_data) -> void
     {
       constexpr static bool fit_sm = fit_small<Func>;
       void* data = fit_sm ? &who.storage_.small_ : who.storage_.large_;
@@ -71,15 +73,13 @@ union unique_function_storage {
         func_ptr->behaviors_ = behaviors<R, Args...>::template dispatch<Func>;
         beyond::detail::reset(who);
       } break;
-      case detail::unique_function_behaviors::data:
-        *static_cast<void**>(ret) = data;
-        break;
       case detail::unique_function_behaviors::trampoline:
         using PlainFunction = R(void*, Args&&...);
         auto trampoline = [](void* func, Args&&... args) -> R {
           return (*static_cast<Func*>(func))(std::forward<Args>(args)...);
         };
         *static_cast<PlainFunction**>(ret) = trampoline;
+        *static_cast<void**>(ret_data) = data;
         break;
       }
     }
@@ -112,14 +112,16 @@ public:
   unique_function(unique_function&& other) noexcept
   {
     if (other) {
-      other.behaviors_(detail::unique_function_behaviors::move_to, other, this);
+      other.behaviors_(detail::unique_function_behaviors::move_to, other, this,
+                       nullptr);
     }
   }
 
   auto operator=(unique_function&& other) noexcept -> unique_function&
   {
     if (other) {
-      other.behaviors_(detail::unique_function_behaviors::move_to, other, this);
+      other.behaviors_(detail::unique_function_behaviors::move_to, other, this,
+                       nullptr);
     } else {
       detail::reset(*this);
     }
@@ -134,8 +136,12 @@ public:
   auto operator()(Args... args) -> R
   {
     if (*this) {
-      const auto trampoline = this->trampoline();
-      void* func = this->data();
+      using PlainFunction = R(void*, Args&&...);
+      PlainFunction* trampoline = nullptr;
+      void* func = nullptr;
+
+      behaviors_(detail::unique_function_behaviors::trampoline,
+                 const_cast<unique_function&>(*this), &trampoline, &func);
       return trampoline(func, std::forward<Args>(args)...);
     } else {
       throw std::bad_function_call{};
@@ -152,33 +158,11 @@ public:
 private:
   friend union detail::unique_function_storage;
 
-  void (*behaviors_)(detail::unique_function_behaviors, unique_function&,
+  void (*behaviors_)(detail::unique_function_behaviors, unique_function&, void*,
                      void*) = nullptr;
   detail::unique_function_storage storage_;
 
   friend void detail::reset(unique_function& func);
-
-  auto trampoline()
-  {
-    using PlainFunction = R(void*, Args&&...);
-    PlainFunction* result = nullptr;
-
-    assert(behaviors_);
-    behaviors_(detail::unique_function_behaviors::trampoline,
-               const_cast<unique_function&>(*this), &result);
-    return result;
-  }
-
-  auto data() noexcept -> void*
-  {
-    void* result = nullptr;
-
-    assert(behaviors_);
-
-    behaviors_(detail::unique_function_behaviors::data,
-               const_cast<unique_function&>(*this), &result);
-    return result;
-  }
 };
 
 template <typename R, typename... Args>
@@ -207,14 +191,16 @@ public:
   unique_function(unique_function&& other) noexcept
   {
     if (other) {
-      other.behaviors_(detail::unique_function_behaviors::move_to, other, this);
+      other.behaviors_(detail::unique_function_behaviors::move_to, other, this,
+                       nullptr);
     }
   }
 
   auto operator=(unique_function&& other) noexcept -> unique_function&
   {
     if (other) {
-      other.behaviors_(detail::unique_function_behaviors::move_to, other, this);
+      other.behaviors_(detail::unique_function_behaviors::move_to, other, this,
+                       nullptr);
     } else {
       detail::reset(*this);
     }
@@ -229,8 +215,13 @@ public:
   auto operator()(Args... args) const -> R
   {
     if (*this) {
-      const auto trampoline = this->trampoline();
-      void* func = this->data();
+      using PlainFunction = R(void*, Args&&...);
+      PlainFunction* trampoline = nullptr;
+      void* func = nullptr;
+
+      behaviors_(detail::unique_function_behaviors::trampoline,
+                 const_cast<unique_function&>(*this), &trampoline, &func);
+
       return trampoline(func, std::forward<Args>(args)...);
     } else {
       throw std::bad_function_call{};
@@ -247,29 +238,9 @@ public:
 private:
   friend union detail::unique_function_storage;
 
-  void (*behaviors_)(detail::unique_function_behaviors, unique_function&,
+  void (*behaviors_)(detail::unique_function_behaviors, unique_function&, void*,
                      void*) = nullptr;
   detail::unique_function_storage storage_;
-
-  auto trampoline() const
-  {
-    using PlainFunction = R(void*, Args&&...);
-    PlainFunction* result = nullptr;
-    assert(behaviors_);
-    behaviors_(detail::unique_function_behaviors::trampoline,
-               const_cast<unique_function&>(*this), &result);
-    return result;
-  }
-
-  auto data() const noexcept -> void*
-  {
-    void* result = nullptr;
-
-    assert(behaviors_);
-    behaviors_(detail::unique_function_behaviors::data,
-               const_cast<unique_function&>(*this), &result);
-    return result;
-  }
 };
 
 template <class Func>
