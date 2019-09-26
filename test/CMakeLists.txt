@@ -1,6 +1,7 @@
 set(TEST_TARGET_NAME ${PROJECT_NAME}Test)
 
-add_executable(${TEST_TARGET_NAME} "main.cpp")
+add_executable(${TEST_TARGET_NAME} "main.cpp"
+    "unique_function_test.cpp" "unique_function_benchmark.cpp")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 conan_cmake_run(REQUIRES Catch2/2.5.0@catchorg/stable

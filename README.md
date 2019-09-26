@@ -38,6 +38,19 @@ f5(); // OK
 ### Removal of `target` and `target_type`
 Not many people are using RTTI for `std::function` anyway.
 
+## benchmark
+Below is a benchmark on invocation overhead. The current implementation `beyond::unique_function` is badly beaten by `std::function`. This is subject to future investigation
+
+Windows 10, Intel Core i7-8650U CPU @ 1.90GHz (8 CPUs), ~2.1GHz, MSVC 2019:
+```
+benchmark name                                  iters   elapsed ns      average
+-------------------------------------------------------------------------------
+function                                       100000        51900         0 ns
+function pointer                                10000        13200         1 ns
+std::function                                   10000        23300         2 ns
+beyond::unique_function                         10000        44200         4 ns
+```
+
 ## Compiler support
 
 Tested on:

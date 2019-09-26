@@ -17,6 +17,14 @@ namespace detail {
 
 enum class unique_function_behaviors { move_to, trampoline, data, destory };
 
+template <typename Func> void reset(unique_function<Func>& func)
+{
+  if (func.behaviors_) {
+    func.behaviors_(detail::unique_function_behaviors::destory, func, nullptr);
+  }
+  func.behaviors_ = nullptr;
+}
+
 union unique_function_storage {
   std::aligned_storage_t<32, 8> small_{};
   void* large_;
@@ -56,12 +64,12 @@ union unique_function_storage {
         }
         break;
       case detail::unique_function_behaviors::move_to: {
-        auto* func = static_cast<unique_function<R(Args...)>*>(ret);
-        func->reset();
-        func->storage_.template emplace<Func>(
+        auto* func_ptr = static_cast<unique_function<R(Args...)>*>(ret);
+        beyond::detail::reset(*func_ptr);
+        func_ptr->storage_.template emplace<Func>(
             std::move(*static_cast<Func*>(data)));
-        func->behaviors_ = behaviors<R, Args...>::template dispatch<Func>;
-        who.reset();
+        func_ptr->behaviors_ = behaviors<R, Args...>::template dispatch<Func>;
+        beyond::detail::reset(who);
       } break;
       case detail::unique_function_behaviors::data:
         *static_cast<void**>(ret) = data;
@@ -113,7 +121,7 @@ public:
     if (other) {
       other.behaviors_(detail::unique_function_behaviors::move_to, other, this);
     } else {
-      reset();
+      detail::reset(*this);
     }
     return *this;
   }
@@ -148,13 +156,7 @@ private:
                      void*) = nullptr;
   detail::unique_function_storage storage_;
 
-  auto reset()
-  {
-    if (behaviors_) {
-      behaviors_(detail::unique_function_behaviors::destory, *this, nullptr);
-    }
-    behaviors_ = nullptr;
-  }
+  friend void detail::reset(unique_function& func);
 
   auto trampoline()
   {
@@ -214,7 +216,7 @@ public:
     if (other) {
       other.behaviors_(detail::unique_function_behaviors::move_to, other, this);
     } else {
-      reset();
+      detail::reset(*this);
     }
     return *this;
   }
@@ -248,14 +250,6 @@ private:
   void (*behaviors_)(detail::unique_function_behaviors, unique_function&,
                      void*) = nullptr;
   detail::unique_function_storage storage_;
-
-  auto reset()
-  {
-    if (behaviors_) {
-      behaviors_(detail::unique_function_behaviors::destory, *this, nullptr);
-    }
-    behaviors_ = nullptr;
-  }
 
   auto trampoline() const
   {
