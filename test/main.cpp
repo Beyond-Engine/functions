@@ -185,6 +185,9 @@ TEST_CASE("CTAD")
 
 TEST_CASE("const unique_function")
 {
+  beyond::unique_function<int() const> f2{[]() mutable { return 42; }};
+  REQUIRE(f2() == 42);
+
   beyond::unique_function<int() const> f{[]() { return 42; }};
   REQUIRE(f() == 42);
 }

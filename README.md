@@ -26,11 +26,20 @@ f(); // returns 2
 ```cpp
 beyond::unique_function<int()> f1 {[x=0]() mutable { return ++x; }};
 beyond::unique_function<int()> f2 {[x=0]() { return x; }};
-const beyond::unique_function<int() const> f3 {[x=0]() mutable { return ++x; }}; // cannot compile
-const beyond::unique_function<int() const> f4 {[x=0]() { return x; }};
-f1(); // cannot compile
-f2(); // cannot compile
+beyond::unique_function<int() const> f3 {[x=0]() mutable { return ++x; }};  // Cannot compile
+beyond::unique_function<int() const> f4 {[x=0]() { return x; }};
+const beyond::unique_function<int()> f5 {[x=0]() mutable { return ++x; }};
+const beyond::unique_function<int()> f6 {[x=0]() { return x; }};
+const beyond::unique_function<int() const> f7 {[x=0]() mutable { return ++x; }}; // Cannot compile
+const beyond::unique_function<int() const> f8 {[x=0]() { return x; }};
+f1(); // OK
+f2(); // OK
+// f3();
 f4(); // OK
+f5(); // Cannot compile
+f6(); // Cannot compile
+// f7();
+f8(); // OK
 ```
 
 ### Removal of `target` and `target_type`
@@ -42,7 +51,11 @@ Tested on:
 - Windows
   * MSVC 2019
 - Linux
+  * g++-9
   * g++-8
+  * clang-9
+  * clang-8
+  * clang-7
   * clang-6.0
 
 ----------
