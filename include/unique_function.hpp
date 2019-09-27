@@ -15,16 +15,9 @@ template <typename R, typename... Args> class unique_function;
 
 namespace detail {
 
-enum class unique_function_behaviors { move_to, trampoline, destory };
+template <typename R, typename... Args> struct unique_function_base;
 
-template <typename Func> void reset(unique_function<Func>& func)
-{
-  if (func.behaviors_) {
-    func.behaviors_(detail::unique_function_behaviors::destory, func, nullptr,
-                    nullptr);
-  }
-  func.behaviors_ = nullptr;
-}
+enum class unique_function_behaviors { move_to, trampoline, destory };
 
 union unique_function_storage {
   std::aligned_storage_t<32, 8> small_{};
@@ -51,7 +44,7 @@ union unique_function_storage {
   template <typename R, typename... Args> struct behaviors {
     template <typename Func>
     static auto dispatch(unique_function_behaviors behavior,
-                         unique_function<R(Args...)>& who, void* ret,
+                         unique_function_base<R, Args...>& who, void* ret,
                          void* ret_data) -> void
     {
       constexpr static bool fit_sm = fit_small<Func>;
@@ -66,12 +59,12 @@ union unique_function_storage {
         }
         break;
       case detail::unique_function_behaviors::move_to: {
-        auto* func_ptr = static_cast<unique_function<R(Args...)>*>(ret);
-        beyond::detail::reset(*func_ptr);
+        auto* func_ptr = static_cast<unique_function_base<R, Args...>*>(ret);
+        func_ptr->reset();
         func_ptr->storage_.template emplace<Func>(
             std::move(*static_cast<Func*>(data)));
         func_ptr->behaviors_ = behaviors<R, Args...>::template dispatch<Func>;
-        beyond::detail::reset(who);
+        who.reset();
       } break;
       case detail::unique_function_behaviors::trampoline:
         using PlainFunction = R(void*, Args&&...);
@@ -86,18 +79,17 @@ union unique_function_storage {
   };
 };
 
-} // namespace detail
-
-template <typename R, typename... Args> class unique_function<R(Args...)> {
+template <typename R, typename... Args> struct unique_function_base {
 public:
   using result_type = R;
 
-  unique_function() = default;
+  unique_function_base() = default;
 
-  template <typename Func, class DFunc = std::decay_t<Func>,
-            class = std::enable_if_t<!std::is_same_v<DFunc, unique_function> &&
-                                     std::is_move_constructible_v<DFunc>>>
-  explicit unique_function(Func&& func)
+  template <
+      typename Func, class DFunc = std::decay_t<Func>,
+      class = std::enable_if_t<!std::is_same_v<DFunc, unique_function_base> &&
+                               std::is_move_constructible_v<DFunc>>>
+  explicit unique_function_base(Func&& func)
   {
     static_assert(std::is_invocable_r_v<R, DFunc, Args...>);
 
@@ -106,10 +98,10 @@ public:
         R, Args...>::template dispatch<DFunc>;
   }
 
-  unique_function(const unique_function&) = delete;
-  auto operator=(const unique_function&) -> unique_function& = delete;
+  unique_function_base(const unique_function_base&) = delete;
+  auto operator=(const unique_function_base&) -> unique_function_base& = delete;
 
-  unique_function(unique_function&& other) noexcept
+  unique_function_base(unique_function_base&& other) noexcept
   {
     if (other) {
       other.behaviors_(detail::unique_function_behaviors::move_to, other, this,
@@ -117,13 +109,13 @@ public:
     }
   }
 
-  auto operator=(unique_function&& other) noexcept -> unique_function&
+  auto operator=(unique_function_base&& other) noexcept -> unique_function_base&
   {
     if (other) {
       other.behaviors_(detail::unique_function_behaviors::move_to, other, this,
                        nullptr);
     } else {
-      detail::reset(*this);
+      reset();
     }
     return *this;
   }
@@ -133,7 +125,15 @@ public:
     return behaviors_ != nullptr;
   }
 
-  auto operator()(Args... args) -> R
+  auto swap(unique_function_base& other) noexcept -> void
+  {
+    unique_function_base temp = std::move(other);
+    other = std::move(*this);
+    *this = std::move(temp);
+  }
+
+protected:
+  auto invoke(Args... args) const -> R
   {
     if (*this) {
       using PlainFunction = R(void*, Args&&...);
@@ -141,106 +141,70 @@ public:
       void* func = nullptr;
 
       behaviors_(detail::unique_function_behaviors::trampoline,
-                 const_cast<unique_function&>(*this), &trampoline, &func);
+                 const_cast<unique_function_base&>(*this), &trampoline, &func);
       return trampoline(func, std::forward<Args>(args)...);
     } else {
       throw std::bad_function_call{};
     }
   }
 
-  auto swap(unique_function& other) noexcept -> void
-  {
-    unique_function temp = std::move(other);
-    other = std::move(*this);
-    *this = std::move(temp);
-  }
-
 private:
   friend union detail::unique_function_storage;
 
-  void (*behaviors_)(detail::unique_function_behaviors, unique_function&, void*,
-                     void*) = nullptr;
+  void (*behaviors_)(detail::unique_function_behaviors, unique_function_base&,
+                     void*, void*) = nullptr;
   detail::unique_function_storage storage_;
 
-  friend void detail::reset(unique_function& func);
+  void reset()
+  {
+    if (behaviors_) {
+      behaviors_(detail::unique_function_behaviors::destory, *this, nullptr,
+                 nullptr);
+    }
+    behaviors_ = nullptr;
+  }
 };
 
-template <typename R, typename... Args>
-class unique_function<R(Args...) const> {
-public:
-  using result_type = R;
+} // namespace detail
 
+template <typename R, typename... Args>
+class unique_function<R(Args...)>
+    : public detail::unique_function_base<R, Args...> {
+public:
   unique_function() = default;
 
   template <typename Func, class DFunc = std::decay_t<Func>,
             class = std::enable_if_t<!std::is_same_v<DFunc, unique_function> &&
                                      std::is_move_constructible_v<DFunc>>>
   explicit unique_function(Func&& func)
+      : detail::unique_function_base<R, Args...>{std::forward<Func>(func)}
   {
-    static_assert(std::is_invocable_r_v<R, DFunc, Args...>);
-
-    storage_.emplace<DFunc>(std::forward<DFunc>(func));
-    behaviors_ = reinterpret_cast<decltype(behaviors_)>(
-        reinterpret_cast<void*>(detail::unique_function_storage::behaviors<
-                                R, Args...>::template dispatch<DFunc>));
   }
 
-  unique_function(const unique_function&) = delete;
-  auto operator=(const unique_function&) -> unique_function& = delete;
-
-  unique_function(unique_function&& other) noexcept
+  auto operator()(Args... args) -> R
   {
-    if (other) {
-      other.behaviors_(detail::unique_function_behaviors::move_to, other, this,
-                       nullptr);
-    }
+    return this->invoke(std::forward<Args>(args)...);
   }
+};
 
-  auto operator=(unique_function&& other) noexcept -> unique_function&
-  {
-    if (other) {
-      other.behaviors_(detail::unique_function_behaviors::move_to, other, this,
-                       nullptr);
-    } else {
-      detail::reset(*this);
-    }
-    return *this;
-  }
+template <typename R, typename... Args>
+class unique_function<R(Args...) const>
+    : public detail::unique_function_base<R, Args...> {
+public:
+  unique_function() = default;
 
-  [[nodiscard]] operator bool() const noexcept
+  template <typename Func, class DFunc = std::decay_t<Func>,
+            class = std::enable_if_t<!std::is_same_v<DFunc, unique_function> &&
+                                     std::is_move_constructible_v<DFunc>>>
+  explicit unique_function(Func&& func)
+      : detail::unique_function_base<R, Args...>{std::forward<Func>(func)}
   {
-    return behaviors_ != nullptr;
   }
 
   auto operator()(Args... args) const -> R
   {
-    if (*this) {
-      using PlainFunction = R(void*, Args&&...);
-      PlainFunction* trampoline = nullptr;
-      void* func = nullptr;
-
-      behaviors_(detail::unique_function_behaviors::trampoline,
-                 const_cast<unique_function&>(*this), &trampoline, &func);
-
-      return trampoline(func, std::forward<Args>(args)...);
-    } else {
-      throw std::bad_function_call{};
-    }
+    return this->invoke(std::forward<Args>(args)...);
   }
-
-  auto swap(unique_function& other) noexcept -> void
-  {
-    unique_function temp = std::move(other);
-    other = std::move(*this);
-    *this = std::move(temp);
-  }
-
-private:
-  friend union detail::unique_function_storage;
-
-  void (*behaviors_)(detail::unique_function_behaviors, unique_function&, void*,
-                     void*) = nullptr;
-  detail::unique_function_storage storage_;
 };
 
 template <class Func>
