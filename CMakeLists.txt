@@ -29,8 +29,8 @@ endif()
 include(${CMAKE_BINARY_DIR}/conan.cmake)
 
 add_library(unique_function INTERFACE)
-target_sources(unique_function INTERFACE "${CMAKE_SOURCE_DIR}/include/unique_function.hpp")
-target_include_directories(unique_function INTERFACE "${CMAKE_SOURCE_DIR}/include")
+target_sources(unique_function INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include/unique_function.hpp")
+target_include_directories(unique_function INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 if(BEYOND_UNIQUE_FUNCTION_BUILD_TESTS)
     add_subdirectory(test)
