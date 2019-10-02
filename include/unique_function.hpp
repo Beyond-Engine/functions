@@ -90,6 +90,10 @@ public:
   using result_type = R;
 
   unique_function_base() = default;
+  ~unique_function_base()
+  {
+    this->reset();
+  }
 
   template <
       typename Func, class DFunc = std::decay_t<Func>,
@@ -121,7 +125,7 @@ public:
     if (other) {
       other.behaviors_(detail::unique_function_behaviors::move_to, other, this);
     } else {
-      reset();
+      this->reset();
     }
     return *this;
   }
