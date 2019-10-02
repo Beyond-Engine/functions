@@ -38,6 +38,13 @@ f5(); // OK
 ### Removal of `target` and `target_type`
 Not many people are using RTTI for `std::function` anyway.
 
+## Memory Footprint under a 64 bits machine
+- Total size: 48 bits
+- Behavior pointer: 8 bits (Function pointer to polymorphic behaviors except invocation)
+- Function pointer: 8 bits (Function pointer to invocation)
+- Storage: 32 bits
+
+
 ## Customization
 ### Build Option
 `beyond::unique_function` is a header-only library, but the following CMake build options are used to enable test or benchmark during development
