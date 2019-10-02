@@ -55,10 +55,32 @@ TEST_CASE("unique_function can move")
 {
   const int x = 1;
   beyond::unique_function<int()> f{[&]() { return x; }};
-  auto f2 = std::move(f);
-  CHECK(!f);
-  REQUIRE(f2);
-  REQUIRE(f2() == x);
+  SECTION("Move contructor") {
+    auto f2 = std::move(f);
+    CHECK(!f);
+    REQUIRE(f2);
+    REQUIRE(f2() == x);
+  }
+
+  SECTION("Move constructor from empty") {
+    beyond::unique_function<int()> f3;
+    auto f2 = std::move(f3);
+    CHECK(!f2);
+    CHECK(!f3);
+  }
+
+  SECTION("Move assignment") {
+    beyond::unique_function<int()> f2;
+    f2 = std::move(f);
+    CHECK(!f);
+    CHECK(f2);
+    CHECK(f2() == x);
+
+    beyond::unique_function<int()> f3;
+    f2 = std::move(f3);
+    CHECK(!f2);
+    CHECK(!f3);
+  }
 }
 
 struct Small {

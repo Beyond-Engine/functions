@@ -45,7 +45,7 @@ void func3()
   func2();
 }
 
-TEST_CASE("unique_function benchmark")
+TEST_CASE("unique_function benchmark", "[.][benchmark]")
 {
   SECTION("Invocation")
   {

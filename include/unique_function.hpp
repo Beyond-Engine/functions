@@ -122,7 +122,7 @@ public:
     return *this;
   }
 
-  [[nodiscard]] operator bool() const noexcept
+  [[nodiscard]] operator bool() const noexcept // NOLINT
   {
     return behaviors_ != nullptr;
   }
