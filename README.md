@@ -39,7 +39,7 @@ f5(); // OK
 Not many people are using RTTI for `std::function` anyway.
 
 ## benchmark
-Below is a benchmark on invocation overhead.
+Below is a benchmark on invocation overhead. It is not rigorous, but it does showes that the overhead of `beyond::unique_function` is similar to `std::function`.
 
 Windows 10, Intel Core i7-8650U CPU @ 1.90GHz (8 CPUs), ~2.1GHz, MSVC 2019:
 ```
@@ -50,6 +50,9 @@ virtual function                                10000        14600         1 ns
 beyond::unique_function                         10000        14600         1 ns
 std::function                                   10000        14500         1 ns
 ```
+Arch Linux, Intel(R) Core(TM) i7-7700 CPU @ 3.60GHz
+![GCC benchmark](images/gcc.svg)
+![Clang benchmark](images/clang.svg)
 
 ## Compiler support
 
