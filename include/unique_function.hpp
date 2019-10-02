@@ -17,7 +17,7 @@ namespace detail {
 
 template <typename R, typename... Args> struct unique_function_base;
 
-enum class unique_function_behaviors { move_to, trampoline, destory };
+enum class unique_function_behaviors { move_to, destory };
 
 union unique_function_storage {
   std::aligned_storage_t<32, 8> small_{};
@@ -43,9 +43,18 @@ union unique_function_storage {
 
   template <typename R, typename... Args> struct behaviors {
     template <typename Func>
+    static R invoke(const unique_function_base<R, Args...>& who, Args&&... args)
+    {
+      constexpr static bool fit_sm = fit_small<Func>;
+      void* data = const_cast<void*>(fit_sm ? &who.storage_.small_
+                                            : who.storage_.large_);
+      return (*static_cast<Func*>(data))(std::forward<Args>(args)...);
+    }
+
+    template <typename Func>
     static auto dispatch(unique_function_behaviors behavior,
-                         unique_function_base<R, Args...>& who, void* ret,
-                         void* ret_data) -> void
+                         unique_function_base<R, Args...>& who, void* ret)
+        -> void
     {
       constexpr static bool fit_sm = fit_small<Func>;
       void* data = fit_sm ? &who.storage_.small_ : who.storage_.large_;
@@ -64,16 +73,9 @@ union unique_function_storage {
         func_ptr->storage_.template emplace<Func>(
             std::move(*static_cast<Func*>(data)));
         func_ptr->behaviors_ = behaviors<R, Args...>::template dispatch<Func>;
+        func_ptr->function_ptr_ = behaviors<R, Args...>::template invoke<Func>;
         who.reset();
       } break;
-      case detail::unique_function_behaviors::trampoline:
-        using PlainFunction = R(void*, Args&&...);
-        auto trampoline = [](void* func, Args&&... args) -> R {
-          return (*static_cast<Func*>(func))(std::forward<Args>(args)...);
-        };
-        *static_cast<PlainFunction**>(ret) = trampoline;
-        *static_cast<void**>(ret_data) = data;
-        break;
       }
     }
   };
@@ -96,6 +98,8 @@ public:
     storage_.emplace<DFunc>(std::forward<DFunc>(func));
     behaviors_ = detail::unique_function_storage::behaviors<
         R, Args...>::template dispatch<DFunc>;
+    function_ptr_ = detail::unique_function_storage::behaviors<
+        R, Args...>::template invoke<DFunc>;
   }
 
   unique_function_base(const unique_function_base&) = delete;
@@ -104,16 +108,14 @@ public:
   unique_function_base(unique_function_base&& other) noexcept
   {
     if (other) {
-      other.behaviors_(detail::unique_function_behaviors::move_to, other, this,
-                       nullptr);
+      other.behaviors_(detail::unique_function_behaviors::move_to, other, this);
     }
   }
 
   auto operator=(unique_function_base&& other) noexcept -> unique_function_base&
   {
     if (other) {
-      other.behaviors_(detail::unique_function_behaviors::move_to, other, this,
-                       nullptr);
+      other.behaviors_(detail::unique_function_behaviors::move_to, other, this);
     } else {
       reset();
     }
@@ -136,13 +138,7 @@ protected:
   auto invoke(Args... args) const -> R
   {
     if (*this) {
-      using PlainFunction = R(void*, Args&&...);
-      PlainFunction* trampoline = nullptr;
-      void* func = nullptr;
-
-      behaviors_(detail::unique_function_behaviors::trampoline,
-                 const_cast<unique_function_base&>(*this), &trampoline, &func);
-      return trampoline(func, std::forward<Args>(args)...);
+      return this->function_ptr_(*this, std::forward<Args>(args)...);
     } else {
       throw std::bad_function_call{};
     }
@@ -152,15 +148,16 @@ private:
   friend union detail::unique_function_storage;
 
   void (*behaviors_)(detail::unique_function_behaviors, unique_function_base&,
-                     void*, void*) = nullptr;
+                     void*) = nullptr;
+  R (*function_ptr_)(const unique_function_base&, Args&&...) = nullptr;
   detail::unique_function_storage storage_;
 
   void reset()
   {
     if (behaviors_) {
-      behaviors_(detail::unique_function_behaviors::destory, *this, nullptr,
-                 nullptr);
+      behaviors_(detail::unique_function_behaviors::destory, *this, nullptr);
     }
+    function_ptr_ = nullptr;
     behaviors_ = nullptr;
   }
 };

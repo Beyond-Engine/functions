@@ -39,17 +39,16 @@ f5(); // OK
 Not many people are using RTTI for `std::function` anyway.
 
 ## benchmark
-Below is a benchmark on invocation overhead. The current implementation `beyond::unique_function` is beaten by `std::function`. Also, I don't understand how `std::function` of MSVC can out perform function pointers (perhaps my way of benchmarking is not rigorous).
+Below is a benchmark on invocation overhead.
 
 Windows 10, Intel Core i7-8650U CPU @ 1.90GHz (8 CPUs), ~2.1GHz, MSVC 2019:
 ```
-benchmark name                                  iters   elapsed ns      average 
+benchmark name                                  iters   elapsed ns      average
 -------------------------------------------------------------------------------
-function                                       100000        49500         0 ns
-function pointer                                10000        15900         1 ns
-std::function                                   10000        15000         1 ns
-virtual function                                10000        17400         1 ns
-beyond::unique_function                         10000        29700         2 ns
+function pointer                                10000        14800         1 ns
+virtual function                                10000        14600         1 ns
+beyond::unique_function                         10000        14600         1 ns
+std::function                                   10000        14500         1 ns
 ```
 
 ## Compiler support

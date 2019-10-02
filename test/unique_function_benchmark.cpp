@@ -52,13 +52,8 @@ TEST_CASE("unique_function benchmark")
     auto func_ptr = +[]() {};
 
     std::function<void()> function{[] {}};
-    beyond::unique_function<void()> unique_function{[] {}};
     std::unique_ptr<A> b = std::make_unique<B>();
-
-    BENCHMARK("function")
-    {
-      func();
-    }
+    beyond::unique_function<void()> unique_function{[] {}};
 
     BENCHMARK("function pointer")
     {
@@ -70,14 +65,14 @@ TEST_CASE("unique_function benchmark")
       (*b)();
     }
 
-    BENCHMARK("std::function")
-    {
-      function();
-    }
-
     BENCHMARK("beyond::unique_function")
     {
       unique_function();
+    }
+
+    BENCHMARK("std::function")
+    {
+      function();
     }
   }
 
@@ -85,13 +80,13 @@ TEST_CASE("unique_function benchmark")
   {
     std::unique_ptr<C> d = std::make_unique<D>();
 
-    std::function<void()> f{[] {}};
-    std::function<void()> f2{[&f] { f(); }};
-    std::function<void()> f3{[&f2] { f2(); }};
-
     beyond::unique_function<void()> u{[] {}};
     beyond::unique_function<void()> u2{[&u] { u(); }};
     beyond::unique_function<void()> u3{[&u2] { u2(); }};
+
+    std::function<void()> f{[] {}};
+    std::function<void()> f2{[&f] { f(); }};
+    std::function<void()> f3{[&f2] { f2(); }};
 
     BENCHMARK("function pointer")
     {
@@ -103,14 +98,14 @@ TEST_CASE("unique_function benchmark")
       d->f3();
     }
 
-    BENCHMARK("std::function")
-    {
-      f3();
-    }
-
     BENCHMARK("beyond::unique_function")
     {
       u3();
+    }
+
+    BENCHMARK("std::function")
+    {
+      f3();
     }
   }
 }
