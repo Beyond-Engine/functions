@@ -17,10 +17,12 @@ TEST_CASE("Default constructor")
   beyond::unique_function<void()> f;
   REQUIRE(!f);
 
+#ifndef BEYOND_UNIQUE_FUNCTION_NO_EXCEPTION
   SECTION("Invoking empty unique_function throws std::bad_function_call")
   {
     REQUIRE_THROWS_AS(f(), std::bad_function_call);
   }
+#endif
 }
 
 TEST_CASE("unique_function with a capturless lambda")
@@ -55,21 +57,24 @@ TEST_CASE("unique_function can move")
 {
   const int x = 1;
   beyond::unique_function<int()> f{[&]() { return x; }};
-  SECTION("Move contructor") {
+  SECTION("Move contructor")
+  {
     auto f2 = std::move(f);
     CHECK(!f);
     REQUIRE(f2);
     REQUIRE(f2() == x);
   }
 
-  SECTION("Move constructor from empty") {
+  SECTION("Move constructor from empty")
+  {
     beyond::unique_function<int()> f3;
     auto f2 = std::move(f3);
     CHECK(!f2);
     CHECK(!f3);
   }
 
-  SECTION("Move assignment") {
+  SECTION("Move assignment")
+  {
     beyond::unique_function<int()> f2;
     f2 = std::move(f);
     CHECK(!f);

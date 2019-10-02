@@ -38,6 +38,17 @@ f5(); // OK
 ### Removal of `target` and `target_type`
 Not many people are using RTTI for `std::function` anyway.
 
+## Customization
+### Build Option
+`beyond::unique_function` is a header-only library, but the following CMake build options are used to enable test or benchmark during development
+- `BEYOND_UNIQUE_FUNCTION_BUILD_TESTS` Build unit tests and benchmarks
+- `BEYOND_UNIQUE_FUNCTION_BUILD_TESTS_COVERAGE` Build test with coverage, must enable `BEYOND_UNIQUE_FUNCTION_BUILD_TESTS` first
+
+### Macros
+You can either define macros before every include or use the CMake build system setting with the same name.
+- `BEYOND_UNIQUE_FUNCTION_NAMESPACE`: defines the namespace of the library, it is `beyond` by default
+- `BEYOND_UNIQUE_FUNCTION_NO_EXCEPTION`: if defined, then the implementation of `operator()` will not throw and invoking a `unique_function` with no underlying target will result in undefined behavior. Note this will not prevent the underlying function from throwing.
+
 ## benchmark
 Below is a benchmark on invocation overhead. It is not rigorous, but it does showes that the overhead of `beyond::unique_function` is similar to `std::function`.
 
