@@ -24,7 +24,7 @@ template <typename R, typename... Args> struct unique_function_base;
 enum class unique_function_behaviors { move_to, destory };
 
 union unique_function_storage {
-  std::aligned_storage_t<32, 8> small_{};
+  alignas(void*) std::byte small_[32];
   void* large_;
 
   template <class T>
@@ -32,14 +32,13 @@ union unique_function_storage {
                                     alignof(T) <= alignof(decltype(small_)) &&
                                     std::is_nothrow_move_constructible_v<T>;
 
-  constexpr unique_function_storage() noexcept = default;
+  unique_function_storage() noexcept = default;
 
   template <typename Func, typename... Data>
   auto emplace(Data&&... args) -> void
   {
     if constexpr (fit_small<Func>) {
-      ::new (reinterpret_cast<void*>(&small_))
-          Func(std::forward<Data>(args)...);
+      ::new (static_cast<void*>(&small_)) Func(std::forward<Data>(args)...);
     } else {
       large_ = new Func(std::forward<Data>(args)...);
     }
