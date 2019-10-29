@@ -88,51 +88,78 @@ TEST_CASE("unique_function can move")
   }
 }
 
-struct Small {
-  Small(int& counter) : counter_ptr{&counter} {}
-  ~Small()
-  {
-    ++(*counter_ptr);
-  }
-
-  void operator()()
-  {
-    ++(*counter_ptr);
-  }
-
-  int* counter_ptr;
+struct Counters {
+  int constructor = 0;
+  int destructor = 0;
+  int move = 0;
+  int copy = 0;
+  int invoke = 0;
 };
 
-struct Large {
-  Large(int& counter) : counter_ptr{&counter} {}
-  ~Large()
+struct Small {
+  Small(Counters& c) : counters{c}
   {
-    ++(*counter_ptr);
+    ++(counters.constructor);
+  }
+
+  ~Small()
+  {
+    ++(counters.destructor);
+  }
+
+  Small(const Small& other) : counters{other.counters}
+  {
+    ++(counters.copy);
+  }
+
+  auto operator=(const Small& other) -> Small&
+  {
+    counters = other.counters;
+    ++(counters.copy);
+    return *this;
+  }
+
+  Small(Small&& other) : counters{other.counters}
+  {
+    ++(counters.move);
+  }
+
+  auto operator=(Small&& other) -> Small&
+  {
+    counters = other.counters;
+    ++(counters.move);
+    return *this;
   }
 
   void operator()()
   {
-    ++(*counter_ptr);
+    ++(counters.invoke);
   }
 
-  int* counter_ptr;
+  Counters& counters;
+};
+
+struct Large : Small {
+  using Small::Small;
+
   char x[128];
 };
 
-TEST_CASE("unique_function constructor forwarding and clean-up")
+TEMPLATE_TEST_CASE("unique_function constructor forwarding and clean-up", "",
+                   Small, Large)
 {
-  int x = 1;
+  Counters cs;
   {
-    beyond::unique_function<void()> f{Small{x}};
+    beyond::unique_function<void()> f{TestType{cs}};
     f();
-  }
-  REQUIRE(x == 3);
 
-  {
-    beyond::unique_function<void()> f{Large{x}};
-    f();
+    REQUIRE(cs.constructor == 1);
+    REQUIRE(cs.destructor == 1);
+    REQUIRE(cs.move <= 1);
+    REQUIRE(cs.copy == 0);
+    REQUIRE(cs.invoke == 1);
   }
-  REQUIRE(x == 5);
+  REQUIRE(cs.destructor == 2);
 }
 
 int func(double)
