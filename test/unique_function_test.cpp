@@ -142,7 +142,7 @@ struct Small {
 struct Large : Small {
   using Small::Small;
 
-  char x[128];
+  char b[128]{};
 };
 
 TEMPLATE_TEST_CASE("unique_function constructor forwarding and clean-up", "",

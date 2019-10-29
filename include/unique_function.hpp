@@ -110,7 +110,8 @@ public:
   }
 
   unique_function_base(const unique_function_base&) = delete;
-  auto operator=(const unique_function_base&) -> unique_function_base& = delete;
+  auto
+  operator=(const unique_function_base&) & -> unique_function_base& = delete;
 
   unique_function_base(unique_function_base&& other) noexcept
   {
@@ -119,7 +120,8 @@ public:
     }
   }
 
-  auto operator=(unique_function_base&& other) noexcept -> unique_function_base&
+  auto operator=(unique_function_base&& other) & noexcept
+                                                 -> unique_function_base&
   {
     if (other) {
       other.behaviors_(detail::unique_function_behaviors::move_to, other, this);
