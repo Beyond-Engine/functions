@@ -205,7 +205,9 @@ public:
 
   template <typename Func, class DFunc = std::decay_t<Func>,
             class = std::enable_if_t<!std::is_same_v<DFunc, unique_function> &&
-                                     std::is_move_constructible_v<DFunc>>>
+                                     std::is_move_constructible_v<DFunc>>,
+            class = std::void_t<
+                decltype(std::declval<const Func&>()(std::declval<Args>()...))>>
   explicit unique_function(Func&& func)
       : detail::unique_function_base<R, Args...>{std::forward<Func>(func)}
   {
