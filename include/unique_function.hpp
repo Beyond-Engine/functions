@@ -9,11 +9,11 @@
 
 #include <cassert>
 
-#ifndef BEYOND_UNIQUE_FUNCTION_NAMESPACE
-#define BEYOND_UNIQUE_FUNCTION_NAMESPACE beyond
+#ifndef BEYOND_FUNCTIONS_NAMESPACE
+#define BEYOND_FUNCTIONS_NAMESPACE beyond
 #endif
 
-namespace BEYOND_UNIQUE_FUNCTION_NAMESPACE {
+namespace BEYOND_FUNCTIONS_NAMESPACE {
 
 template <typename R, typename... Args> class unique_function;
 
@@ -146,7 +146,7 @@ public:
 protected:
   auto invoke(Args... args) const -> R
   {
-#ifndef BEYOND_UNIQUE_FUNCTION_NO_EXCEPTION
+#ifndef BEYOND_FUNCTIONS_NO_EXCEPTION
     if (*this) {
       return this->function_ptr_(*this, std::forward<Args>(args)...);
     } else {
@@ -309,8 +309,8 @@ unique_function(Func)
     ->unique_function<
         typename detail::function_deduce_signature<Func>::type::guide_type>;
 
-} // namespace BEYOND_UNIQUE_FUNCTION_NAMESPACE
+} // namespace BEYOND_FUNCTIONS_NAMESPACE
 
-#undef BEYOND_UNIQUE_FUNCTION_NAMESPACE
+#undef BEYOND_FUNCTIONS_NAMESPACE
 
 #endif // BEYOND_UNIQUE_FUNCTION_HPP

@@ -12,7 +12,7 @@ target_link_libraries(${TEST_TARGET_NAME} PRIVATE
     unique_function compiler_warnings
     CONAN_PKG::Catch2)
 
-if(${BEYOND_UNIQUE_FUNCTION_BUILD_TESTS_COVERAGE})
+if(${BEYOND_FUNCTIONS_BUILD_TESTS_COVERAGE})
     set(CMAKE_STATIC_LINKER_FLAGS "--whole-archive")
     set(CMAKE_SHARED_LINKER_FLAGS "--whole-archive")
 

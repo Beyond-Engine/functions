@@ -19,7 +19,7 @@ matrix:
   - <<: *linux
     compiler: gcc
     name: GCC 8 with Unit Test
-    env: CC="/usr/bin/gcc-8" CXX="/usr/bin/g++-8" CMAKE_OPTIONS="-DBEYOND_UNIQUE_FUNCTION_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release"
+    env: CC="/usr/bin/gcc-8" CXX="/usr/bin/g++-8" CMAKE_OPTIONS="-DBEYOND_FUNCTIONS_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release"
     addons:
       apt:
         sources:
@@ -34,7 +34,7 @@ matrix:
   - <<: *linux
     compiler: clang
     name: Clang 6 with Unit Test
-    env: CC="/usr/bin/clang-6.0" CXX="/usr/bin/clang++-6.0" CMAKE_OPTIONS="-DBEYOND_UNIQUE_FUNCTION_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release"
+    env: CC="/usr/bin/clang-6.0" CXX="/usr/bin/clang++-6.0" CMAKE_OPTIONS="-DBEYOND_FUNCTIONS_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release"
     addons:
       apt:
         sources:
@@ -51,7 +51,7 @@ matrix:
   - <<: *linux
     compiler: gcc
     name: Coverage
-    env: BUILD_ONLY=1 CC="/usr/bin/gcc-7" CXX="/usr/bin/g++-7" GCOV="/usr/bin/gcov-7" CMAKE_OPTIONS=" -DCMAKE_BUILD_TYPE=Debug -DBEYOND_UNIQUE_FUNCTION_BUILD_TESTS=ON -DBEYOND_UNIQUE_FUNCTION_BUILD_TESTS_COVERAGE=ON"  CODECOV_TOKEN="fdb32228-ad06-4bae-92f9-10c03873cb85"
+    env: BUILD_ONLY=1 CC="/usr/bin/gcc-7" CXX="/usr/bin/g++-7" GCOV="/usr/bin/gcov-7" CMAKE_OPTIONS=" -DCMAKE_BUILD_TYPE=Debug -DBEYOND_FUNCTIONS_BUILD_TESTS=ON -DBEYOND_FUNCTIONS_BUILD_TESTS_COVERAGE=ON"  CODECOV_TOKEN="fdb32228-ad06-4bae-92f9-10c03873cb85"
     addons:
       apt:
         sources:
