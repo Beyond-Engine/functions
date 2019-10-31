@@ -240,6 +240,15 @@ TEST_CASE("const unique_function")
 {
   // beyond::unique_function<int() const> f2{[]() mutable { return 42; }};
 
-  beyond::unique_function<int() const> f{[]() { return 42; }};
-  REQUIRE(f() == 42);
+  SECTION("A unique_function to const function")
+  {
+    beyond::unique_function<int() const> f{[]() { return 42; }};
+    REQUIRE(f() == 42);
+
+    SECTION("const specialization can implicit convert to none-const version")
+    {
+      beyond::unique_function<int()> f2 = std::move(f);
+      REQUIRE(f2() == 42);
+    }
+  }
 }

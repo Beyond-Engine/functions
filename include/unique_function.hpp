@@ -180,14 +180,20 @@ private:
 template <typename R, typename... Args>
 class unique_function<R(Args...)>
     : public detail::unique_function_base<R, Args...> {
+  using base_type = detail::unique_function_base<R, Args...>;
+
 public:
   unique_function() = default;
 
   template <typename Func, class DFunc = std::decay_t<Func>,
             class = std::enable_if_t<!std::is_same_v<DFunc, unique_function> &&
                                      std::is_move_constructible_v<DFunc>>>
-  explicit unique_function(Func&& func)
-      : detail::unique_function_base<R, Args...>{std::forward<Func>(func)}
+  explicit unique_function(Func&& func) : base_type{std::forward<Func>(func)}
+  {
+  }
+
+  unique_function(unique_function<R(Args...) const>&& other)
+      : base_type{static_cast<base_type&&>(other)}
   {
   }
 
