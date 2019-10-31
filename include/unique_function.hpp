@@ -4,10 +4,7 @@
 #define BEYOND_UNIQUE_FUNCTION_HPP
 
 #include <functional>
-#include <memory>
 #include <type_traits>
-
-#include <cassert>
 
 #ifndef BEYOND_FUNCTIONS_NAMESPACE
 #define BEYOND_FUNCTIONS_NAMESPACE beyond
