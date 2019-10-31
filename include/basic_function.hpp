@@ -21,12 +21,6 @@ struct basic_function {
 public:
   using result_type = R;
 
-  basic_function() = default;
-  ~basic_function()
-  {
-    this->reset();
-  }
-
   template <typename Func, class DFunc = std::decay_t<Func>,
             class = std::enable_if_t<!std::is_same_v<DFunc, basic_function> &&
                                      std::is_move_constructible_v<DFunc>>>
@@ -74,6 +68,12 @@ public:
   }
 
 protected:
+  basic_function() = default;
+  ~basic_function()
+  {
+    this->reset();
+  }
+
   auto invoke(Args... args) const -> R
   {
 #ifndef BEYOND_FUNCTIONS_NO_EXCEPTION
@@ -104,6 +104,41 @@ private:
     behaviors_ = nullptr;
   }
 };
+
+template <typename Storage, typename R, typename... Args>
+auto swap(basic_function<Storage, R, Args...>& lhs,
+          basic_function<Storage, R, Args...>& rhs) noexcept -> void
+{
+  lhs.swap(rhs);
+}
+
+template <typename Storage, typename R, typename... Args>
+auto operator==(const basic_function<Storage, R, Args...>& lhs,
+                std::nullptr_t) noexcept -> bool
+{
+  return !lhs;
+}
+
+template <typename Storage, typename R, typename... Args>
+auto operator==(std::nullptr_t,
+                const basic_function<Storage, R, Args...>& lhs) noexcept -> bool
+{
+  return !lhs;
+}
+
+template <typename Storage, typename R, typename... Args>
+auto operator!=(const basic_function<Storage, R, Args...>& lhs,
+                std::nullptr_t) noexcept -> bool
+{
+  return lhs;
+}
+
+template <typename Storage, typename R, typename... Args>
+auto operator!=(std::nullptr_t,
+                const basic_function<Storage, R, Args...>& lhs) noexcept -> bool
+{
+  return lhs;
+}
 
 } // namespace BEYOND_FUNCTIONS_NAMESPACE
 

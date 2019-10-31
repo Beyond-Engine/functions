@@ -126,41 +126,6 @@ public:
   }
 };
 
-template <class Func>
-auto swap(unique_function<Func>& lhs, unique_function<Func>& rhs) noexcept
-    -> void
-{
-  lhs.swap(rhs);
-}
-
-template <class Func>
-auto operator==(const unique_function<Func>& lhs, std::nullptr_t) noexcept
-    -> bool
-{
-  return !lhs;
-}
-
-template <class Func>
-auto operator==(std::nullptr_t, const unique_function<Func>& lhs) noexcept
-    -> bool
-{
-  return !lhs;
-}
-
-template <class Func>
-auto operator!=(const unique_function<Func>& lhs, std::nullptr_t) noexcept
-    -> bool
-{
-  return lhs;
-}
-
-template <class Func>
-auto operator!=(std::nullptr_t, const unique_function<Func>& lhs) noexcept
-    -> bool
-{
-  return lhs;
-}
-
 // deduction guides
 template <class R, typename... Args>
 unique_function(R (*)(Args...))->unique_function<R(Args...) const>;
