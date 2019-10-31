@@ -1,7 +1,7 @@
 # beyond functions
-[![Build Status](https://travis-ci.org/LesleyLai/unique_function.svg?branch=master)](https://travis-ci.org/LesleyLai/unique_function)
-[![Build status](https://ci.appveyor.com/api/projects/status/0bgwgxccf864dxog/branch/master?svg=true)](https://ci.appveyor.com/project/LesleyLai/unique-function/branch/master)
-[![codecov](https://codecov.io/gh/LesleyLai/unique_function/branch/master/graph/badge.svg)](https://codecov.io/gh/LesleyLai/unique_function)
+[![Build Status](https://travis-ci.org/Beyond-Engine/functions.svg?branch=master)](https://travis-ci.org/Beyond-Engine/functions)
+[![Build status](https://ci.appveyor.com/api/projects/status/8wh5x1k6xnxupdpe/branch/master?svg=true)](https://ci.appveyor.com/project/LesleyLai/functions/branch/master)
+[![codecov](https://codecov.io/gh/Beyond-Engine/functions/branch/master/graph/badge.svg)](https://codecov.io/gh/Beyond-Engine/functions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](file:LICENSE)
 
 This repository is a C++17 implementation of various type erased callable types. It includes:
