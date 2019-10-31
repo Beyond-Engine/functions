@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(unique_function VERSION 0.0.1 LANGUAGES CXX)
+project(beyond_functions VERSION 0.0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -32,7 +32,9 @@ endif()
 include(${CMAKE_BINARY_DIR}/conan.cmake)
 
 add_library(unique_function INTERFACE)
-target_sources(unique_function INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include/unique_function.hpp")
+target_sources(unique_function INTERFACE
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/basic_function.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/unique_function.hpp")
 target_include_directories(unique_function INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_compile_definitions(unique_function INTERFACE
     BEYOND_FUNCTIONS_NAMESPACE=${BEYOND_FUNCTIONS_NAMESPACE})

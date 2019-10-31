@@ -1,14 +1,7 @@
-#pragma once
-
 #ifndef BEYOND_UNIQUE_FUNCTION_HPP
 #define BEYOND_UNIQUE_FUNCTION_HPP
 
-#include <functional>
-#include <type_traits>
-
-#ifndef BEYOND_FUNCTIONS_NAMESPACE
-#define BEYOND_FUNCTIONS_NAMESPACE beyond
-#endif
+#include "basic_function.hpp"
 
 namespace BEYOND_FUNCTIONS_NAMESPACE {
 
@@ -16,9 +9,11 @@ template <typename R, typename... Args> class unique_function;
 
 namespace detail {
 
-template <typename R, typename... Args> struct unique_function_base;
+union unique_function_storage;
 
-enum class unique_function_behaviors { move_to, destory };
+template <typename R, typename... Args>
+using unique_function_base =
+    basic_function<unique_function_storage, R, Args...>;
 
 union unique_function_storage {
   alignas(void*) std::byte small_[32];
@@ -52,7 +47,7 @@ union unique_function_storage {
     }
 
     template <typename Func>
-    static auto dispatch(unique_function_behaviors behavior,
+    static auto dispatch(function_behaviors behavior,
                          unique_function_base<R, Args...>& who, void* ret)
         -> void
     {
@@ -60,14 +55,14 @@ union unique_function_storage {
       void* data = fit_sm ? &who.storage_.small_ : who.storage_.large_;
 
       switch (behavior) {
-      case detail::unique_function_behaviors::destory:
+      case detail::function_behaviors::destory:
         if constexpr (fit_sm) {
           static_cast<Func*>(data)->~Func();
         } else {
           delete static_cast<Func*>(who.storage_.large_);
         }
         break;
-      case detail::unique_function_behaviors::move_to: {
+      case detail::function_behaviors::move_to: {
         auto* func_ptr = static_cast<unique_function_base<R, Args...>*>(ret);
         func_ptr->reset();
         func_ptr->storage_.template emplace<Func>(
@@ -79,97 +74,6 @@ union unique_function_storage {
       }
     }
   };
-};
-
-template <typename R, typename... Args> struct unique_function_base {
-public:
-  using result_type = R;
-
-  unique_function_base() = default;
-  ~unique_function_base()
-  {
-    this->reset();
-  }
-
-  template <
-      typename Func, class DFunc = std::decay_t<Func>,
-      class = std::enable_if_t<!std::is_same_v<DFunc, unique_function_base> &&
-                               std::is_move_constructible_v<DFunc>>>
-  explicit unique_function_base(Func&& func)
-  {
-    static_assert(std::is_invocable_r_v<R, DFunc, Args...>);
-
-    storage_.emplace<DFunc>(std::forward<DFunc>(func));
-    behaviors_ = detail::unique_function_storage::behaviors<
-        R, Args...>::template dispatch<DFunc>;
-    function_ptr_ = detail::unique_function_storage::behaviors<
-        R, Args...>::template invoke<DFunc>;
-  }
-
-  unique_function_base(const unique_function_base&) = delete;
-  auto
-  operator=(const unique_function_base&) & -> unique_function_base& = delete;
-
-  unique_function_base(unique_function_base&& other) noexcept
-  {
-    if (other) {
-      other.behaviors_(detail::unique_function_behaviors::move_to, other, this);
-    }
-  }
-
-  auto operator=(unique_function_base&& other) & noexcept
-                                                 -> unique_function_base&
-  {
-    if (other) {
-      other.behaviors_(detail::unique_function_behaviors::move_to, other, this);
-    } else {
-      this->reset();
-    }
-    return *this;
-  }
-
-  [[nodiscard]] operator bool() const noexcept // NOLINT
-  {
-    return behaviors_ != nullptr;
-  }
-
-  auto swap(unique_function_base& other) noexcept -> void
-  {
-    unique_function_base temp = std::move(other);
-    other = std::move(*this);
-    *this = std::move(temp);
-  }
-
-protected:
-  auto invoke(Args... args) const -> R
-  {
-#ifndef BEYOND_FUNCTIONS_NO_EXCEPTION
-    if (*this) {
-      return this->function_ptr_(*this, std::forward<Args>(args)...);
-    } else {
-      throw std::bad_function_call{};
-    }
-#else
-    return this->function_ptr_(*this, std::forward<Args>(args)...);
-#endif
-  }
-
-private:
-  friend union detail::unique_function_storage;
-
-  void (*behaviors_)(detail::unique_function_behaviors, unique_function_base&,
-                     void*) = nullptr;
-  R (*function_ptr_)(const unique_function_base&, Args&&...) = nullptr;
-  detail::unique_function_storage storage_;
-
-  void reset()
-  {
-    if (behaviors_) {
-      behaviors_(detail::unique_function_behaviors::destory, *this, nullptr);
-    }
-    function_ptr_ = nullptr;
-    behaviors_ = nullptr;
-  }
 };
 
 } // namespace detail
