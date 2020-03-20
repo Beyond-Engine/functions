@@ -2,6 +2,8 @@
 Checks:          '*,
 -clang-analyzer-deadcode.DeadStores,
 -clang-analyzer-alpha.*,
+-cppcoreguidelines-avoid-c-arrays,
+-cppcoreguidelines-owning-memory,
 -readability-static-accessed-through-instance,
 -readability-braces-around-statements,
 -readability-implicit-bool-cast,

@@ -5,100 +5,202 @@
 
 namespace BEYOND_FUNCTIONS_NAMESPACE {
 
-template <typename R, typename... Args> class unique_function;
+template <typename Signature> class unique_function;
+template <typename R, typename... Args> class unique_function_base;
 
-namespace detail {
-
-union unique_function_storage;
-
-template <typename R, typename... Args>
-using unique_function_base =
-    basic_function<unique_function_storage, R, Args...>;
-
-union unique_function_storage {
-  alignas(void*) std::byte small_[32];
-  void* large_;
+template <std::size_t small_size> union unique_function_storage {
+  void* large = nullptr;
+  std::byte small[small_size];
 
   template <class T>
-  static constexpr bool fit_small = sizeof(T) <= sizeof(small_) &&
-                                    alignof(T) <= alignof(decltype(small_)) &&
-                                    std::is_nothrow_move_constructible_v<T>;
+  static constexpr bool
+      fit_small = sizeof(T) <= sizeof(small) && small_size % alignof(T) == 0 &&
+                  std::is_nothrow_move_constructible_v<T>;
 
-  unique_function_storage() noexcept = default;
+  unique_function_storage() = default;
 
-  template <typename Func, typename... Data>
-  auto emplace(Data&&... args) -> void
+  template <typename Func, typename... A> auto emplace(A&&... args)
   {
     if constexpr (fit_small<Func>) {
-      ::new (static_cast<void*>(&small_)) Func(std::forward<Data>(args)...);
+      ::new (static_cast<void*>(&small)) Func(std::forward<A>(args)...);
     } else {
-      large_ = new Func(std::forward<Data>(args)...);
+      large = new Func(std::forward<A>(args)...);
     }
   }
 
   template <typename R, typename... Args> struct behaviors {
-    template <typename Func>
-    static R invoke(const unique_function_base<R, Args...>& who, Args&&... args)
-    {
-      constexpr static bool fit_sm = fit_small<Func>;
-      void* data = const_cast<void*>(fit_sm ? &who.storage_.small_
-                                            : who.storage_.large_);
-      return (*static_cast<Func*>(data))(std::forward<Args>(args)...);
-    }
+    R(*invoke_ptr)
+    (unique_function_storage& storage, Args&&... args) = nullptr;
+    void (*destroy_ptr)(unique_function_storage& storage) = nullptr;
+    void (*move_ptr)(unique_function_storage& from,
+                     unique_function_storage& to) = nullptr;
 
-    template <typename Func>
-    static auto dispatch(function_behaviors behavior,
-                         unique_function_base<R, Args...>& who, void* ret)
-        -> void
+    template <typename Func> static auto get_instance()
     {
-      constexpr static bool fit_sm = fit_small<Func>;
-      void* data = fit_sm ? &who.storage_.small_ : who.storage_.large_;
+      constexpr static behaviors b{
+          //.invoke_ptr =
+          +[](unique_function_storage& storage, Args&&... args) {
+            const auto data = fit_small<Func>
+                                  ? static_cast<void*>(&storage.small)
+                                  : storage.large;
 
-      switch (behavior) {
-      case detail::function_behaviors::destory:
-        if constexpr (fit_sm) {
-          static_cast<Func*>(data)->~Func();
-        } else {
-          delete static_cast<Func*>(who.storage_.large_);
-        }
-        break;
-      case detail::function_behaviors::move_to: {
-        auto* func_ptr = static_cast<unique_function_base<R, Args...>*>(ret);
-        func_ptr->reset();
-        func_ptr->storage_.template emplace<Func>(
-            std::move(*static_cast<Func*>(data)));
-        func_ptr->behaviors_ = behaviors<R, Args...>::template dispatch<Func>;
-        func_ptr->function_ptr_ = behaviors<R, Args...>::template invoke<Func>;
-        who.reset();
-      } break;
-      }
+            return (*static_cast<Func*>(data))(std::forward<Args>(args)...);
+          },
+          //.destroy_ptr =
+          +[](unique_function_storage& storage) {
+            if constexpr (fit_small<Func>) {
+              static_cast<Func*>(static_cast<void*>(&storage.small))->~Func();
+            } else {
+              delete static_cast<Func*>(storage.large);
+            }
+          },
+          //.move_ptr =
+          +[](unique_function_storage& from, unique_function_storage& to) {
+            if constexpr (fit_small<Func>) {
+              ::new (static_cast<void*>(&to.small))
+                  Func(reinterpret_cast<Func&&>(from.small));
+            } else {
+              to.large = std::exchange(from.large, {});
+            }
+          }};
+      return &b;
     }
   };
 };
 
-} // namespace detail
+template <typename R, typename... Args> class unique_function_base {
+  static constexpr std::size_t small_size = 32;
 
-template <typename R, typename... Args>
-class unique_function<R(Args...)>
-    : public detail::unique_function_base<R, Args...> {
-  using base_type = detail::unique_function_base<R, Args...>;
+  unique_function_storage<small_size> storage_;
+  const typename unique_function_storage<small_size>::template behaviors<
+      R, Args...>* behaviors_ = nullptr;
+
+protected:
+  constexpr unique_function_base() noexcept = default;
+
+  template <
+      typename Func, typename DFunc = std::decay_t<Func>,
+      class = std::enable_if_t<!std::is_same_v<DFunc, unique_function_base> &&
+                               std::is_move_constructible_v<DFunc>>>
+  unique_function_base(Func&& func)
+  {
+    storage_.template emplace<DFunc>(std::forward<DFunc>(func));
+    behaviors_ = unique_function_storage<small_size>::template behaviors<
+        R, Args...>::template get_instance<Func>();
+  }
+
+  auto invoke(Args&&... args) const -> R
+  {
+    if (behaviors_ != nullptr) {
+      return behaviors_->invoke_ptr(
+          const_cast<unique_function_storage<small_size>&>(this->storage_),
+          std::forward<Args>(args)...);
+    }
+    throw std::bad_function_call{};
+  }
+
+  auto reset()
+  {
+    if (behaviors_) {
+      behaviors_->destroy_ptr(storage_);
+    }
+    behaviors_ = {};
+  }
 
 public:
-  unique_function() = default;
+  unique_function_base(const unique_function_base&) = delete;
+  auto
+  operator=(const unique_function_base&) & -> unique_function_base& = delete;
+
+  unique_function_base(unique_function_base&& other) noexcept
+  {
+    if (other) {
+      other.behaviors_->move_ptr(other.storage_, storage_);
+      behaviors_ = std::exchange(other.behaviors_, {});
+    }
+  }
+
+  ~unique_function_base()
+  {
+    reset();
+  }
+
+  auto operator=(unique_function_base&& rhs) & noexcept -> unique_function_base&
+  {
+    if (this != &rhs) {
+      reset();
+      if (rhs) {
+        rhs.behaviors_->move_ptr(rhs.storage_, storage_);
+        behaviors_ = std::exchange(rhs.behaviors_, {});
+      }
+    }
+    return *this;
+  }
+
+  auto swap(unique_function_base& rhs) noexcept -> void
+  {
+    using std::swap;
+    swap(storage_, rhs.storage_);
+    swap(behaviors_, rhs.behaviors_);
+  }
+
+  explicit operator bool() const noexcept
+  {
+    return behaviors_ != nullptr;
+  }
+
+  friend auto operator==(const unique_function_base& f, std::nullptr_t) noexcept
+      -> bool
+  {
+    return !f;
+  }
+
+  friend auto operator==(std::nullptr_t, const unique_function_base& f) noexcept
+      -> bool
+  {
+    return !f;
+  }
+
+  friend auto operator!=(const unique_function_base& f, std::nullptr_t) noexcept
+      -> bool
+  {
+    return bool(f);
+  }
+
+  friend auto operator!=(std::nullptr_t, const unique_function_base& f) noexcept
+      -> bool
+  {
+    return bool(f);
+  }
+
+  friend auto swap(unique_function_base& lhs,
+                   unique_function_base& rhs) noexcept -> void
+  {
+    lhs.swap(rhs);
+  }
+};
+
+template <typename R, typename... Args>
+class unique_function<R(Args...)> : public unique_function_base<R, Args...> {
+public:
+  using base_type = unique_function_base<R, Args...>;
+
+  constexpr unique_function() = default;
+  explicit constexpr unique_function(std::nullptr_t) noexcept {}
 
   template <typename Func, class DFunc = std::decay_t<Func>,
             class = std::enable_if_t<!std::is_same_v<DFunc, unique_function> &&
                                      std::is_move_constructible_v<DFunc>>>
-  explicit unique_function(Func&& func) : base_type{std::forward<Func>(func)}
+  explicit unique_function(Func&& func) : base_type{std::forward<DFunc>(func)}
   {
   }
 
-  unique_function(unique_function<R(Args...) const>&& other)
+  /*implicit*/ unique_function(unique_function<R(Args...) const>&& other)
       : base_type{static_cast<base_type&&>(other)}
   {
   }
 
-  auto operator()(Args... args) -> R
+  auto operator()(Args&&... args) -> R
   {
     return this->invoke(std::forward<Args>(args)...);
   }
@@ -106,21 +208,24 @@ public:
 
 template <typename R, typename... Args>
 class unique_function<R(Args...) const>
-    : public detail::unique_function_base<R, Args...> {
+    : public unique_function_base<R, Args...> {
 public:
-  unique_function() = default;
+  using base_type = unique_function_base<R, Args...>;
 
-  template <typename Func, class DFunc = std::decay_t<Func>,
-            class = std::enable_if_t<!std::is_same_v<DFunc, unique_function> &&
-                                     std::is_move_constructible_v<DFunc>>,
-            class = std::void_t<
-                decltype(std::declval<const Func&>()(std::declval<Args>()...))>>
-  explicit unique_function(Func&& func)
-      : detail::unique_function_base<R, Args...>{std::forward<Func>(func)}
+  constexpr unique_function() = default;
+  explicit constexpr unique_function(std::nullptr_t) noexcept {}
+
+  template <
+      typename Func, typename DFunc = std::decay_t<Func>,
+      typename = std::enable_if_t<!std::is_same_v<DFunc, unique_function> &&
+                                  std::is_move_constructible_v<DFunc>>,
+      typename = std::void_t<
+          decltype(std::declval<const Func&>()(std::declval<Args>()...))>>
+  explicit unique_function(Func&& func) : base_type{std::forward<DFunc>(func)}
   {
   }
 
-  auto operator()(Args... args) const -> R
+  auto operator()(Args&&... args) const -> R
   {
     return this->invoke(std::forward<Args>(args)...);
   }

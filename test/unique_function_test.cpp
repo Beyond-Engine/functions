@@ -86,6 +86,13 @@ TEST_CASE("unique_function can move")
     CHECK(!f2);
     CHECK(!f3);
   }
+
+  SECTION("Self assignment")
+  {
+    f = std::move(f);
+    REQUIRE(f);
+    REQUIRE(f() == x);
+  }
 }
 
 struct Counters {
@@ -148,21 +155,41 @@ struct Large : Small {
 TEMPLATE_TEST_CASE("unique_function constructor forwarding and clean-up", "",
                    Small, Large)
 {
-  Counters cs;
+  SECTION("Clean-up after destructor")
   {
-    beyond::unique_function<void()> f{TestType{cs}};
-    f();
+    Counters cs;
+    {
+      beyond::unique_function<void()> f{TestType{cs}};
+      f();
 
-    REQUIRE(cs.constructor == 1);
-    REQUIRE(cs.destructor == 1);
-    REQUIRE(cs.move <= 1);
-    REQUIRE(cs.copy == 0);
-    REQUIRE(cs.invoke == 1);
+      REQUIRE(cs.constructor == 1);
+      REQUIRE(cs.destructor == 1);
+      REQUIRE(cs.move <= 1);
+      REQUIRE(cs.copy == 0);
+      REQUIRE(cs.invoke == 1);
+    }
+    REQUIRE(cs.destructor == 2);
   }
-  REQUIRE(cs.destructor == 2);
+
+  SECTION("Clean-up after move assignment")
+  {
+    Counters cs;
+    Counters cs2;
+    {
+      beyond::unique_function<void()> f{TestType{cs}};
+      f();
+      beyond::unique_function<void()> f2{TestType{cs2}};
+      REQUIRE(cs.destructor == 1);
+
+      f2 = std::move(f);
+      REQUIRE(cs.destructor == 1);
+      REQUIRE(cs2.destructor == 2);
+    }
+    REQUIRE(cs.destructor == 2);
+  }
 }
 
-int func(double)
+auto func(double) -> int
 {
   return 0;
 }

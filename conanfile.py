@@ -1,6 +1,5 @@
 from conans import ConanFile
 
-
 class BeyondFunctionsRecipe(ConanFile):
     name = "beyond-functions"
     version = "0.0.1"
