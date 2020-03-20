@@ -14,8 +14,8 @@ include("CMakeDependentOption")
 
 option(BEYOND_FUNCTIONS_BUILD_TESTS "Builds the tests" OFF)
 CMAKE_DEPENDENT_OPTION(BEYOND_FUNCTIONS_BUILD_TESTS_COVERAGE
-    "Build the project with code coverage support for tests" OFF
-                       "BEYOND_FUNCTIONS_BUILD_TESTS" OFF)
+        "Build the project with code coverage support for tests" OFF
+        "BEYOND_FUNCTIONS_BUILD_TESTS" OFF)
 
 option(BEYOND_FUNCTIONS_WARNING_AS_ERROR "Treats compiler warnings as errors" ON)
 option(BEYOND_FUNCTIONS_NO_EXCEPTION "Do not throw exception in the unique_function implementation" OFF)
@@ -23,26 +23,26 @@ option(BEYOND_FUNCTIONS_NO_EXCEPTION "Do not throw exception in the unique_funct
 include("compiler")
 
 # Conan package manager
-if(NOT EXISTS "${CMAKE_BINARY_DIR}/conan.cmake")
+if (NOT EXISTS "${CMAKE_BINARY_DIR}/conan.cmake")
     message(STATUS "Downloading conan.cmake from https://github.com/conan-io/cmake-conan")
     file(DOWNLOAD "https://raw.githubusercontent.com/conan-io/cmake-conan/master/conan.cmake"
-                  "${CMAKE_BINARY_DIR}/conan.cmake")
-endif()
+            "${CMAKE_BINARY_DIR}/conan.cmake")
+endif ()
 
 include(${CMAKE_BINARY_DIR}/conan.cmake)
 
 add_library(unique_function INTERFACE)
 target_sources(unique_function INTERFACE
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/basic_function.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/unique_function.hpp")
+        "${CMAKE_CURRENT_SOURCE_DIR}/include/beyond/basic_function.hpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/include/beyond/unique_function.hpp")
 target_include_directories(unique_function INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_compile_definitions(unique_function INTERFACE
-    BEYOND_FUNCTIONS_NAMESPACE=${BEYOND_FUNCTIONS_NAMESPACE})
+        BEYOND_FUNCTIONS_NAMESPACE=${BEYOND_FUNCTIONS_NAMESPACE})
 if (${BEYOND_FUNCTIONS_NO_EXCEPTION})
     target_compile_definitions(unique_function INTERFACE
-        BEYOND_FUNCTIONS_NO_EXCEPTION)
-endif()
+            BEYOND_FUNCTIONS_NO_EXCEPTION)
+endif ()
 
-if(BEYOND_FUNCTIONS_BUILD_TESTS)
+if (BEYOND_FUNCTIONS_BUILD_TESTS)
     add_subdirectory(test)
-endif()
+endif ()
